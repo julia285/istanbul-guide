@@ -12,17 +12,34 @@ import { PrismaClient } from "../generated/client/index.js";
 // its own, so we point it there explicitly. See:
 // https://pris.ly/d/engine-not-found-nextjs
 if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
-  const generatedClientDir = path.dirname(fileURLToPath(import.meta.url)) + "/../generated/client";
-  if (fs.existsSync(generatedClientDir)) {
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const generatedClientDir = path.join(moduleDir, "../generated/client");
+  const exists = fs.existsSync(generatedClientDir);
+  // TEMPORARY debug logging — remove once the engine binary is confirmed
+  // found in production. See conversation 2026-07-10 re: Prisma engine
+  // resolution on Vercel.
+  console.error("[prisma-debug] moduleDir:", moduleDir);
+  console.error("[prisma-debug] generatedClientDir:", generatedClientDir);
+  console.error("[prisma-debug] exists:", exists);
+  if (exists) {
     const engineFiles = fs
       .readdirSync(generatedClientDir)
       .filter((file) => file.startsWith("libquery_engine"));
+    console.error("[prisma-debug] engineFiles:", engineFiles);
     const match =
       engineFiles.find((file) =>
         process.platform === "darwin" ? file.includes("darwin") : !file.includes("darwin"),
       ) ?? engineFiles[0];
     if (match) {
       process.env.PRISMA_QUERY_ENGINE_LIBRARY = path.join(generatedClientDir, match);
+      console.error("[prisma-debug] set PRISMA_QUERY_ENGINE_LIBRARY:", process.env.PRISMA_QUERY_ENGINE_LIBRARY);
+    }
+  } else {
+    try {
+      console.error("[prisma-debug] moduleDir listing:", fs.readdirSync(moduleDir));
+      console.error("[prisma-debug] moduleDir/.. listing:", fs.readdirSync(path.join(moduleDir, "..")));
+    } catch (err) {
+      console.error("[prisma-debug] listing failed:", err);
     }
   }
 }
