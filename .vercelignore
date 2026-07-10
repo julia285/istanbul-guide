@@ -1,0 +1,10 @@
+# Never upload locally-generated, platform-specific build output — Vercel's
+# own build regenerates these for its runtime (Linux). Uploading the Mac
+# build alongside risked exactly the "wrong platform" bug this was added to
+# prevent (see packages/db/prisma/schema.prisma binaryTargets comment).
+packages/db/generated/
+packages/*/dist/
+apps/*/dist/
+node_modules/
+.next/
+.turbo/

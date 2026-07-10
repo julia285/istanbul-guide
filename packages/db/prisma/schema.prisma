@@ -13,6 +13,12 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  // "native" covers local dev (darwin-arm64 on this machine); Vercel's
+  // serverless functions run on Amazon Linux 2023, which needs its own
+  // engine binary bundled alongside — without this, a deploy built with
+  // only the local platform's engine fails at runtime with
+  // "could not locate the Query Engine for runtime ...".
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
   // Fixed, non-pnpm-hashed output path — Next.js's webpack bundling mangles
   // the query engine's runtime __dirname-relative lookup when the client
   // lives deep inside a pnpm content-addressed store path. See
