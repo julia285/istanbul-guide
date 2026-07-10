@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "home": "Home",
+    "events": "Events",
+    "restaurants": "Restaurants"
+  },
+  "home": {
+    "title": "Istanbul Guide",
+    "tagline": "Discover Istanbul — events, restaurants, and hidden gems, updated automatically.",
+    "eyebrow": "The city, updated daily",
+    "heroTitle": "Everything happening in Istanbul, in one place",
+    "heroSubtitle": "Concerts, festivals, restaurants, and hidden gems — collected automatically and kept fresh, so you never miss what's on.",
+    "exploreEvents": "Explore events",
+    "exploreRestaurants": "Explore restaurants",
+    "sectionsTitle": "Built for every side of the city",
+    "comingSoon": "Coming soon"
+  },
+  "events": {
+    "title": "Events",
+    "subtitle": "Concerts, festivals, and things happening around the city",
+    "empty": "Nothing published yet",
+    "emptyDetail": "We're actively collecting events right now — check back shortly."
+  },
+  "restaurants": {
+    "title": "Restaurants",
+    "subtitle": "Where to eat, from neighborhood favorites to hidden gems",
+    "empty": "Nothing published yet",
+    "emptyDetail": "We're actively collecting restaurants right now — check back shortly."
+  },
+  "sections": {
+    "nightlife": "Nightlife",
+    "museums": "Museums",
+    "cafes": "Cafes",
+    "dayTrips": "Day Trips",
+    "neighborhoodGuides": "Neighborhood Guides",
+    "hiddenGems": "Hidden Gems"
+  },
+  "admin": {
+    "dashboard": "Overview",
+    "published": "Live listings",
+    "reviewQueue": "Needs your review",
+    "rejected": "Not published",
+    "sources": "Data sources",
+    "parserStatus": "Collection status",
+    "aiLogs": "Activity log"
+  }
+}

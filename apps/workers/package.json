@@ -1,0 +1,23 @@
+{
+  "name": "@istanbul-guide/workers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/scheduler/run.ts",
+    "start": "node dist/scheduler/run.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@istanbul-guide/db": "workspace:*",
+    "@istanbul-guide/shared": "workspace:*",
+    "rss-parser": "^3.13.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

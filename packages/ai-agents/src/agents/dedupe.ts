@@ -1,0 +1,77 @@
+import { prisma } from "@istanbul-guide/db";
+
+// Deliberately not embedding-based (no second AI provider needed): narrows
+// candidates with a normal indexed query (same category/district, nearby
+// date), then scores name similarity with Sørensen–Dice over character
+// trigrams — the same underlying idea Postgres's pg_trgm uses, just computed
+// in-process so we don't need any extra extension or external API. Revisit
+// with real embeddings if fuzzy name matching proves too weak at scale.
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.6;
+const DATE_WINDOW_HOURS = 36;
+
+function trigrams(input: string): Set<string> {
+  const clean = input
+    .toLowerCase()
+    .replace(/[^a-z0-9ışğüöç\s]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const grams = new Set<string>();
+  for (let i = 0; i <= clean.length - 3; i++) {
+    grams.add(clean.slice(i, i + 3));
+  }
+  return grams;
+}
+
+function diceSimilarity(a: string, b: string): number {
+  const setA = trigrams(a);
+  const setB = trigrams(b);
+  if (setA.size === 0 || setB.size === 0) return 0;
+  let intersection = 0;
+  for (const gram of setA) {
+    if (setB.has(gram)) intersection++;
+  }
+  return (2 * intersection) / (setA.size + setB.size);
+}
+
+export interface DuplicateMatch {
+  eventId: string;
+  similarity: number;
+}
+
+export async function findDuplicateEvent(
+  name: string,
+  venueName: string | undefined,
+  categoryId: string,
+  districtId: string | null,
+  startAt: string,
+): Promise<DuplicateMatch | null> {
+  const start = new Date(startAt);
+  const windowMs = DATE_WINDOW_HOURS * 60 * 60 * 1000;
+
+  const candidates = await prisma.event.findMany({
+    where: {
+      categoryId,
+      districtId: districtId ?? undefined,
+      status: { in: ["PUBLISHED", "REVIEW"] },
+      startAt: {
+        gte: new Date(start.getTime() - windowMs),
+        lte: new Date(start.getTime() + windowMs),
+      },
+    },
+    include: { translations: { where: { locale: "en" } } },
+  });
+
+  const compareText = [name, venueName].filter(Boolean).join(" ");
+  let best: DuplicateMatch | null = null;
+
+  for (const candidate of candidates) {
+    const candidateName = candidate.translations[0]?.name;
+    if (!candidateName) continue;
+    const similarity = diceSimilarity(compareText, candidateName);
+    if (similarity >= DUPLICATE_SIMILARITY_THRESHOLD && (!best || similarity > best.similarity)) {
+      best = { eventId: candidate.id, similarity };
+    }
+  }
+
+  return best;
+}

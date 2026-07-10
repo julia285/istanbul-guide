@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "/Users/larisapogorelova/.nvm/versions/node/v24.18.0/bin/node",
+      "runtimeArgs": [
+        "/Users/larisapogorelova/Desktop/Claude/apps/web/node_modules/next/dist/bin/next",
+        "dev",
+        "/Users/larisapogorelova/Desktop/Claude/apps/web",
+        "--port",
+        "3000"
+      ],
+      "port": 3000
+    }
+  ]
+}

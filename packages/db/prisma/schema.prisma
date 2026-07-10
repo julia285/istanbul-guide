@@ -1,0 +1,536 @@
+// Istanbul Guide — core database schema
+// See /Users/larisapogorelova/.claude/plans/wild-hopping-pearl.md section 3 for the design rationale.
+//
+// Notes:
+// - `coordinates` / `boundary` use PostGIS geography types via `Unsupported(...)`.
+//   Prisma Client can't query these directly — use $queryRaw with parameterized
+//   ST_* functions for anything geo (nearby search, district containment, etc).
+// - `embedding` uses pgvector via `Unsupported(...)` for the same reason — raw
+//   SQL with the `<=>` cosine-distance operator for similarity search.
+// - `locale` is a plain string ("en" | "tr" today), not an enum, so adding a
+//   language later is a data change, not a schema migration.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  // Fixed, non-pnpm-hashed output path — Next.js's webpack bundling mangles
+  // the query engine's runtime __dirname-relative lookup when the client
+  // lives deep inside a pnpm content-addressed store path. See
+  // https://pris.ly/d/nextjs-prisma-vercel and github.com/prisma/prisma/issues/17064
+  //
+  // Lives as a sibling of src/ and dist/ (not inside src/) so the same
+  // relative import ("../generated/client") resolves correctly from both
+  // src/index.ts (dev/typecheck) and the compiled dist/index.js (prod) —
+  // src/ and dist/ are both one level below this package root.
+  output = "../generated/client"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  // Supabase's PgBouncer (transaction mode, used by DATABASE_URL) doesn't
+  // support the prepared statements `prisma migrate` needs — migrations run
+  // through the unpooled connection instead.
+  directUrl  = env("DIRECT_URL")
+  extensions = [postgis, pgvector(map: "vector")]
+}
+
+// ---------------------------------------------------------------------------
+// Sources & raw ingestion
+// ---------------------------------------------------------------------------
+
+enum SourceType {
+  API
+  RSS
+  SCRAPE
+}
+
+model Source {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  baseUrl       String
+  type          SourceType
+  scrapeConfig  Json?
+  legalNotes    String?
+  active        Boolean    @default(true)
+  lastRunAt     DateTime?
+  healthStatus  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  rawListings RawListing[]
+  places      Place[]
+  events      Event[]
+
+  @@map("sources")
+}
+
+enum RawListingStatus {
+  PENDING
+  PROCESSED
+  ERROR
+}
+
+model RawListing {
+  id               String            @id @default(cuid())
+  sourceId         String
+  sourceExternalId String
+  rawPayload       Json
+  contentHash      String
+  fetchedAt        DateTime          @default(now())
+  status           RawListingStatus  @default(PENDING)
+  errorMessage     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, sourceExternalId])
+  @@index([status])
+  @@index([contentHash])
+  @@map("raw_listings")
+}
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum ContentStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  REJECTED
+  EXPIRED
+}
+
+enum PriceTier {
+  FREE
+  BUDGET
+  MODERATE
+  EXPENSIVE
+}
+
+// ---------------------------------------------------------------------------
+// Taxonomy: District / Category / Tag
+// ---------------------------------------------------------------------------
+
+model District {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  boundary  Unsupported("geography(Polygon,4326)")?
+  centerLat Float?
+  centerLng Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations DistrictTranslation[]
+  places       Place[]
+  events       Event[]
+
+  @@map("districts")
+}
+
+model DistrictTranslation {
+  id          String   @id @default(cuid())
+  districtId  String
+  locale      String
+  name        String
+  description String?
+
+  district District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@unique([districtId, locale])
+  @@map("district_translations")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  parentId  String?
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  translations CategoryTranslation[]
+  places       Place[]
+  events       Event[]
+
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          String   @id @default(cuid())
+  categoryId  String
+  locale      String
+  name        String
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@map("category_translations")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  translations TagTranslation[]
+  placeTags    PlaceTag[]
+  eventTags    EventTag[]
+
+  @@map("tags")
+}
+
+model TagTranslation {
+  id     String @id @default(cuid())
+  tagId  String
+  locale String
+  name   String
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, locale])
+  @@map("tag_translations")
+}
+
+// ---------------------------------------------------------------------------
+// Place (evergreen venues: restaurants, cafes, bars, museums, shops, ...)
+// ---------------------------------------------------------------------------
+
+model Place {
+  id                 String        @id @default(cuid())
+  sourceId           String?
+  categoryId         String
+  districtId         String?
+  coordinates        Unsupported("geography(Point,4326)")?
+  priceTier          PriceTier?
+  hours              Json?
+  contact            Json?
+  status             ContentStatus @default(DRAFT)
+  confidenceScore    Float?
+  canonicalDedupeId  String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  publishedAt        DateTime?
+
+  source          Source?  @relation(fields: [sourceId], references: [id])
+  category        Category @relation(fields: [categoryId], references: [id])
+  district        District? @relation(fields: [districtId], references: [id])
+  canonicalDedupe Place?   @relation("PlaceDedupe", fields: [canonicalDedupeId], references: [id])
+  duplicates      Place[]  @relation("PlaceDedupe")
+
+  translations PlaceTranslation[]
+  tags         PlaceTag[]
+  media        Media[]
+  events       Event[]
+  articleItems ArticleItem[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([districtId])
+  @@map("places")
+}
+
+model PlaceTranslation {
+  id               String  @id @default(cuid())
+  placeId          String
+  locale           String
+  name             String
+  description      String
+  slug             String
+  metaTitle        String?
+  metaDescription  String?
+  canonicalUrl     String?
+  keywords         String[]
+  ogTitle          String?
+  ogDescription    String?
+  ogImage          String?
+  schemaJsonLd     Json?
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, locale])
+  @@unique([locale, slug])
+  @@map("place_translations")
+}
+
+model PlaceTag {
+  placeId String
+  tagId   String
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([placeId, tagId])
+  @@map("place_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Event (time-bound: concerts, festivals, exhibitions, weekend happenings)
+// ---------------------------------------------------------------------------
+
+model Event {
+  id                  String        @id @default(cuid())
+  sourceId            String?
+  placeId             String?
+  standaloneLocation  Json?
+  coordinates         Unsupported("geography(Point,4326)")?
+  categoryId          String
+  districtId          String?
+  startAt             DateTime
+  endAt               DateTime?
+  recurrence          Json?
+  price               Json?
+  status              ContentStatus @default(DRAFT)
+  confidenceScore     Float?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  publishedAt         DateTime?
+
+  source   Source?   @relation(fields: [sourceId], references: [id])
+  place    Place?    @relation(fields: [placeId], references: [id])
+  category Category  @relation(fields: [categoryId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  translations EventTranslation[]
+  tags         EventTag[]
+  media        Media[]
+  articleItems ArticleItem[]
+
+  @@index([status])
+  @@index([startAt])
+  @@index([categoryId])
+  @@index([districtId])
+  @@map("events")
+}
+
+model EventTranslation {
+  id               String  @id @default(cuid())
+  eventId          String
+  locale           String
+  name             String
+  description      String
+  slug             String
+  metaTitle        String?
+  metaDescription  String?
+  canonicalUrl     String?
+  keywords         String[]
+  ogTitle          String?
+  ogDescription    String?
+  ogImage          String?
+  schemaJsonLd     Json?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, locale])
+  @@unique([locale, slug])
+  @@map("event_translations")
+}
+
+model EventTag {
+  eventId String
+  tagId   String
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, tagId])
+  @@map("event_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Article (Content Agent output: listicles, guides, news) + Guide items
+// ---------------------------------------------------------------------------
+
+enum ArticleType {
+  LISTICLE
+  GUIDE
+  NEWS
+}
+
+model Article {
+  id              String        @id @default(cuid())
+  type            ArticleType
+  status          ContentStatus @default(DRAFT)
+  confidenceScore Float?
+  generatedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  publishedAt     DateTime?
+
+  translations ArticleTranslation[]
+  items        ArticleItem[]
+
+  @@index([status])
+  @@map("articles")
+}
+
+model ArticleTranslation {
+  id               String  @id @default(cuid())
+  articleId        String
+  locale           String
+  title            String
+  body             String
+  metaTitle        String?
+  metaDescription  String?
+  slug             String
+  ogTitle          String?
+  ogDescription    String?
+  ogImage          String?
+  schemaJsonLd     Json?
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, locale])
+  @@unique([locale, slug])
+  @@map("article_translations")
+}
+
+model ArticleItem {
+  id        String  @id @default(cuid())
+  articleId String
+  placeId   String?
+  eventId   String?
+  position  Int
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  place   Place?  @relation(fields: [placeId], references: [id])
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  @@index([articleId])
+  @@map("article_items")
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+enum MediaOwnerType {
+  PLACE
+  EVENT
+  ARTICLE
+}
+
+model Media {
+  id                 String         @id @default(cuid())
+  ownerType          MediaOwnerType
+  placeId            String?
+  eventId            String?
+  url                String
+  altText            Json?
+  sourceAttribution  String?
+  licenseStatus      String?
+  createdAt          DateTime       @default(now())
+
+  place Place? @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([ownerType, placeId])
+  @@index([ownerType, eventId])
+  @@map("media")
+}
+
+// ---------------------------------------------------------------------------
+// AI pipeline observability
+// ---------------------------------------------------------------------------
+
+model AiLog {
+  id              String   @id @default(cuid())
+  entityType      String
+  entityId        String
+  agentName       String
+  inputSnapshot   Json?
+  outputSnapshot  Json?
+  modelUsed       String?
+  tokensUsed      Int?
+  costUsd         Decimal? @db.Decimal(10, 6)
+  confidenceScore Float?
+  status          String
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([agentName])
+  @@index([createdAt])
+  @@map("ai_logs")
+}
+
+enum ReviewStatus {
+  PENDING
+  IN_REVIEW
+  RESOLVED
+}
+
+model ReviewQueueItem {
+  id              String       @id @default(cuid())
+  entityType      String
+  entityId        String
+  reason          String
+  confidenceScore Float?
+  assignedTo      String?
+  status          ReviewStatus @default(PENDING)
+  createdAt       DateTime     @default(now())
+  resolvedAt      DateTime?
+
+  @@index([status])
+  @@index([entityType, entityId])
+  @@map("review_queue")
+}
+
+model Embedding {
+  id         String @id @default(cuid())
+  entityType String
+  entityId   String
+  embedding  Unsupported("vector(1536)")
+  model      String
+  createdAt  DateTime @default(now())
+
+  @@unique([entityType, entityId, model])
+  @@map("embeddings")
+}
+
+// ---------------------------------------------------------------------------
+// SEO / redirects
+// ---------------------------------------------------------------------------
+
+enum RedirectType {
+  PERMANENT
+  TEMPORARY
+}
+
+model Redirect {
+  id        String       @id @default(cuid())
+  fromPath  String       @unique
+  toPath    String
+  type      RedirectType @default(PERMANENT)
+  createdAt DateTime     @default(now())
+
+  @@map("redirects")
+}
+
+// ---------------------------------------------------------------------------
+// Users (admin staff now, public accounts later)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+  USER
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  role       UserRole @default(USER)
+  localePref String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("users")
+}

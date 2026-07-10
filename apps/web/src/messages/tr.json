@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "events": "Etkinlikler",
+    "restaurants": "Restoranlar"
+  },
+  "home": {
+    "title": "İstanbul Rehberi",
+    "tagline": "İstanbul'u keşfedin — etkinlikler, restoranlar ve gizli mekanlar, otomatik olarak güncellenir.",
+    "eyebrow": "Şehir, her gün güncelleniyor",
+    "heroTitle": "İstanbul'da olup biten her şey, tek bir yerde",
+    "heroSubtitle": "Konserler, festivaller, restoranlar ve gizli mekanlar — otomatik olarak toplanır ve güncel tutulur, hiçbir şeyi kaçırmazsınız.",
+    "exploreEvents": "Etkinlikleri keşfet",
+    "exploreRestaurants": "Restoranları keşfet",
+    "sectionsTitle": "Şehrin her yönü için",
+    "comingSoon": "Yakında"
+  },
+  "events": {
+    "title": "Etkinlikler",
+    "subtitle": "Konserler, festivaller ve şehirde olup bitenler",
+    "empty": "Henüz yayınlanan yok",
+    "emptyDetail": "Şu anda etkinlikleri topluyoruz — kısa süre sonra tekrar bakın."
+  },
+  "restaurants": {
+    "title": "Restoranlar",
+    "subtitle": "Mahalle favorilerinden gizli mekanlara, nerede yenir",
+    "empty": "Henüz yayınlanan yok",
+    "emptyDetail": "Şu anda restoranları topluyoruz — kısa süre sonra tekrar bakın."
+  },
+  "sections": {
+    "nightlife": "Gece Hayatı",
+    "museums": "Müzeler",
+    "cafes": "Kafeler",
+    "dayTrips": "Günübirlik Geziler",
+    "neighborhoodGuides": "Semt Rehberleri",
+    "hiddenGems": "Gizli Mekanlar"
+  },
+  "admin": {
+    "dashboard": "Genel Bakış",
+    "published": "Yayında olanlar",
+    "reviewQueue": "İncelemenizi bekleyenler",
+    "rejected": "Yayınlanmayanlar",
+    "sources": "Veri kaynakları",
+    "parserStatus": "Toplama durumu",
+    "aiLogs": "Etkinlik günlüğü"
+  }
+}

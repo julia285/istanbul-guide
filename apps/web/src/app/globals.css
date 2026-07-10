@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Bosphorus teal + spice-market terracotta — warm, editorial, not "tech startup" */
+  --color-ink: #16211f;
+  --color-teal-50: #eef5f4;
+  --color-teal-100: #d3e6e3;
+  --color-teal-600: #14595a;
+  --color-teal-700: #0f4547;
+  --color-teal-900: #0a2e2f;
+  --color-terracotta-100: #f6e4d8;
+  --color-terracotta-500: #c1502e;
+  --color-terracotta-600: #a63f22;
+  --color-sand-50: #fbf7f1;
+  --color-sand-100: #f4ead9;
+}
+
+body {
+  @apply bg-(--color-sand-50) text-(--color-ink) antialiased;
+}
