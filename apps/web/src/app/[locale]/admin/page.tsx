@@ -33,7 +33,7 @@ export default async function AdminDashboardPage() {
         {t("dashboard")}
       </h1>
       <p className="mt-1 text-sm text-(--color-ink)/50">
-        A quick look at what's live on your site right now.
+        A quick look at what&rsquo;s live on your site right now.
       </p>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (

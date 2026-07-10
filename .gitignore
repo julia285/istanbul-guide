@@ -21,6 +21,9 @@ build/
 # prisma
 packages/db/generated/
 
+# vercel
+.vercel
+
 # misc
 .DS_Store
 *.log
