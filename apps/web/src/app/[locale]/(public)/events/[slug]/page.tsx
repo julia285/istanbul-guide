@@ -119,6 +119,25 @@ export default async function EventDetailPage({
         {translation.description}
       </p>
 
+      {event.sourceUrl && !isExpired && (
+        <a
+          href={event.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-(--color-terracotta-500) px-6 py-3 text-sm font-semibold text-white transition hover:bg-(--color-terracotta-600)"
+        >
+          {locale === "tr" ? "Bilet ve Detaylar" : "Get Tickets & Details"}
+          <span aria-hidden>↗</span>
+        </a>
+      )}
+      {event.sourceUrl && (
+        <p className="mt-2 text-xs text-(--color-ink)/40">
+          {locale === "tr"
+            ? "Orijinal kaynağa yönlendirileceksiniz."
+            : "You'll be taken to the original source."}
+        </p>
+      )}
+
       {event.tags.length > 0 && (
         <div className="mt-8 flex flex-wrap gap-2">
           {event.tags.map(({ tag }) => (

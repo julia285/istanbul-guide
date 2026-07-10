@@ -95,6 +95,7 @@ export async function processRawListing(
   const event = await prisma.event.create({
     data: {
       sourceId: rawListing.sourceId,
+      sourceUrl: record.sourceUrl,
       categoryId: category.id,
       districtId: district?.id,
       startAt: new Date(facts.startAt),

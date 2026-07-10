@@ -284,6 +284,11 @@ model PlaceTag {
 model Event {
   id                  String        @id @default(cuid())
   sourceId            String?
+  // The specific source article/listing URL this event was collected from
+  // (distinct from `source`, which is the site as a whole) — shown as an
+  // outbound "more info / tickets" link, and doubles as attribution back
+  // to the source per the sourcing strategy in the architecture doc.
+  sourceUrl           String?
   placeId             String?
   standaloneLocation  Json?
   coordinates         Unsupported("geography(Point,4326)")?
