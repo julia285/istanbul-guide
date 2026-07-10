@@ -12,7 +12,12 @@ const nextConfig: NextConfig = {
   // Prisma's query engine binary is resolved via runtime filesystem paths
   // that break once webpack bundles @prisma/client — keep it a real
   // require() instead. See https://pris.ly/d/nextjs-prisma-vercel
-  serverExternalPackages: ["@prisma/client"],
+  //
+  // @istanbul-guide/db does its own filesystem path computation (locating
+  // the engine binary — see its src/index.ts) relative to the running
+  // module's own location; that breaks the same way if webpack bundles it,
+  // so it needs to stay external too.
+  serverExternalPackages: ["@prisma/client", "@istanbul-guide/db"],
   // The Prisma client (and its native query engine binary) lives in a
   // sibling workspace package, so Next's serverless bundler doesn't
   // discover it via static analysis and silently drops it from the deployed
