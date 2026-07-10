@@ -1,9 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 
-// NOTE: not access-gated yet — wire up once Supabase Auth is configured
-// (see architecture doc section 9, Security). Do not deploy this route
-// publicly reachable without that in place.
+// NOTE: gated by a shared-password Basic Auth check in middleware.ts as a
+// stopgap — replace with real per-person Supabase Auth (architecture doc
+// section 9) before this has more than one admin user or exposes actions
+// beyond read-only stats.
 export default async function AdminLayout({
   children,
 }: {
