@@ -18,14 +18,11 @@ if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
   // serverless functions run from "/var/task/..."). So this tries a fixed
   // list of plausible runtime roots instead of deriving one dynamically.
   const candidateDirs = [
-    "/var/task/packages/db/generated/client",
+    "/var/task/packages/db/generated/client", // Vercel serverless runtime
     path.join(process.cwd(), "packages/db/generated/client"),
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "../generated/client"),
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../generated/client"), // local dev/workers
   ];
-  // TEMPORARY debug logging — remove once confirmed working in production.
-  console.error("[prisma-debug] candidates:", candidateDirs);
   const generatedClientDir = candidateDirs.find((dir) => fs.existsSync(dir));
-  console.error("[prisma-debug] resolved:", generatedClientDir);
   if (generatedClientDir) {
     const engineFiles = fs
       .readdirSync(generatedClientDir)
@@ -36,7 +33,6 @@ if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
       ) ?? engineFiles[0];
     if (match) {
       process.env.PRISMA_QUERY_ENGINE_LIBRARY = path.join(generatedClientDir, match);
-      console.error("[prisma-debug] set PRISMA_QUERY_ENGINE_LIBRARY:", process.env.PRISMA_QUERY_ENGINE_LIBRARY);
     }
   }
 }
