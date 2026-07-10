@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@istanbul-guide/db";
 import { EmptyState } from "@/components/empty-state";
+import { Link } from "@/i18n/navigation";
 
 // Published events change whenever the AI pipeline publishes/updates one;
 // on-demand revalidation (revalidatePath, called by the Quality Agent at
@@ -38,11 +39,8 @@ export default async function EventsPage({
         <ul className="mt-8 grid gap-5 sm:grid-cols-2">
           {events.map((event) => {
             const translation = event.translations[0];
-            return (
-              <li
-                key={event.id}
-                className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md"
-              >
+            const card = (
+              <>
                 <h2 className="font-display text-lg font-semibold text-(--color-teal-900)">
                   {translation?.name ?? event.id}
                 </h2>
@@ -59,6 +57,18 @@ export default async function EventsPage({
                   })}
                   {event.district?.translations[0] ? ` · ${event.district.translations[0].name}` : ""}
                 </p>
+              </>
+            );
+            return (
+              <li
+                key={event.id}
+                className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md"
+              >
+                {translation?.slug ? (
+                  <Link href={`/events/${translation.slug}`}>{card}</Link>
+                ) : (
+                  card
+                )}
               </li>
             );
           })}
