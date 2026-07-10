@@ -4,8 +4,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["DATABASE_URL", "DIRECT_URL"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "env": ["DATABASE_URL", "DIRECT_URL", "ADMIN_USERNAME", "ADMIN_PASSWORD"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "generated/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
