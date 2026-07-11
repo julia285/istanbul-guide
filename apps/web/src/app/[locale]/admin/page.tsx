@@ -5,12 +5,13 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const t = await getTranslations("admin");
-  const [placesByStatus, eventsByStatus, reviewQueueCount, sourceCount] =
+  const [placesByStatus, eventsByStatus, reviewQueueCount, sourceCount, needsAttentionCount] =
     await Promise.all([
       prisma.place.groupBy({ by: ["status"], _count: true }),
       prisma.event.groupBy({ by: ["status"], _count: true }),
       prisma.reviewQueueItem.count({ where: { status: "PENDING" } }),
       prisma.source.count({ where: { active: true } }),
+      prisma.source.count({ where: { active: true, autoPublishEnabled: false } }),
     ]);
 
   const countFor = (
@@ -25,6 +26,7 @@ export default async function AdminDashboardPage() {
     },
     { label: t("reviewQueue"), value: reviewQueueCount },
     { label: "Collecting from", value: sourceCount, suffix: sourceCount === 1 ? "source" : "sources" },
+    { label: "Sources needing attention", value: needsAttentionCount },
   ];
 
   return (
@@ -35,7 +37,7 @@ export default async function AdminDashboardPage() {
       <p className="mt-1 text-sm text-(--color-ink)/50">
         A quick look at what&rsquo;s live on your site right now.
       </p>
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <div
             key={stat.label}

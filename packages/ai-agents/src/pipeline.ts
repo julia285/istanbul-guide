@@ -7,6 +7,7 @@ import { writeCopy } from "./agents/writer.js";
 import { translateToTurkish } from "./agents/translation.js";
 import { generateSeo } from "./agents/seo.js";
 import { scoreQuality } from "./agents/quality.js";
+import { createInitialEventSource, recordEventSource } from "./event-source-merge.js";
 
 export type PipelineOutcome =
   | { status: "PUBLISHED" | "REVIEW" | "REJECTED"; eventId: string }
@@ -62,6 +63,20 @@ export async function processRawListing(
   );
   if (duplicate) {
     await logStep(rawListing.id, "dedupe", "ok", { confidenceScore: duplicate.similarity });
+
+    // Not discarded — recorded as an additional source for the same
+    // canonical event, promoted to primary if it outranks the current one.
+    await recordEventSource(
+      {
+        eventId: duplicate.eventId,
+        sourceId: rawListing.sourceId,
+        rawListingId: rawListing.id,
+        sourceExternalId: rawListing.sourceExternalId,
+        sourceUrl: record.sourceUrl,
+      },
+      facts,
+    );
+
     await prisma.rawListing.update({
       where: { id: rawListing.id },
       data: { status: "PROCESSED" },
@@ -138,6 +153,14 @@ export async function processRawListing(
         ],
       },
     },
+  });
+
+  await createInitialEventSource({
+    eventId: event.id,
+    sourceId: rawListing.sourceId,
+    rawListingId: rawListing.id,
+    sourceExternalId: rawListing.sourceExternalId,
+    sourceUrl: record.sourceUrl,
   });
 
   if (quality.decision === "REVIEW") {

@@ -18,6 +18,7 @@ export default async function AdminLayout({
     ["/admin/rejected", t("rejected")],
     ["/admin/sources", t("sources")],
     ["/admin/parser-status", t("parserStatus")],
+    ["/admin/conflicts", t("conflicts")],
     ["/admin/ai-logs", t("aiLogs")],
   ];
 

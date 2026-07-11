@@ -43,6 +43,7 @@
     "rejected": "Not published",
     "sources": "Data sources",
     "parserStatus": "Collection status",
-    "aiLogs": "Activity log"
+    "aiLogs": "Activity log",
+    "conflicts": "Data conflicts"
   }
 }

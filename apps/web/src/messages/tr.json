@@ -43,6 +43,7 @@
     "rejected": "Yayınlanmayanlar",
     "sources": "Veri kaynakları",
     "parserStatus": "Toplama durumu",
-    "aiLogs": "Etkinlik günlüğü"
+    "aiLogs": "Etkinlik günlüğü",
+    "conflicts": "Veri çakışmaları"
   }
 }

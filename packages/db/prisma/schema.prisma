@@ -28,7 +28,7 @@ generator client {
   // relative import ("../generated/client") resolves correctly from both
   // src/index.ts (dev/typecheck) and the compiled dist/index.js (prod) —
   // src/ and dist/ are both one level below this package root.
-  output = "../generated/client"
+  output          = "../generated/client"
 }
 
 datasource db {
@@ -51,25 +51,82 @@ enum SourceType {
   SCRAPE
 }
 
-model Source {
-  id            String     @id @default(cuid())
-  name          String
-  slug          String     @unique
-  baseUrl       String
-  type          SourceType
-  scrapeConfig  Json?
-  legalNotes    String?
-  active        Boolean    @default(true)
-  lastRunAt     DateTime?
-  healthStatus  String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+// HEALTHY: recent runs succeeding. DEGRADED: at least one recent failure but
+// not yet at the disable threshold. FAILED: consecutiveFailures has crossed
+// the threshold — autoPublishEnabled gets flipped off automatically so a
+// broken selector/schema change can't silently publish garbage.
+enum SourceHealthStatus {
+  HEALTHY
+  DEGRADED
+  FAILED
+}
 
-  rawListings RawListing[]
-  places      Place[]
-  events      Event[]
+model Source {
+  id                  String              @id @default(cuid())
+  name                String
+  slug                String              @unique
+  baseUrl             String
+  type                SourceType
+  scrapeConfig        Json?
+  legalNotes          String?
+  active              Boolean             @default(true)
+  // Default priority tier for EventSource rows created from this source —
+  // 0 = official organizer/venue, 1 = official ticket seller, 2 = aggregator,
+  // 3 = editorial/community. Lower wins when the same event is reported by
+  // multiple sources. Per-EventSource priority can still be overridden.
+  priority            Int                 @default(2)
+  // How often the scheduler should consider this source due, per-source
+  // (major ticket platforms 120-240, official venues 240-360, museums 720,
+  // community sources 360-720) — see architecture doc scheduling section.
+  intervalMinutes     Int                 @default(60)
+  lastRunAt           DateTime?
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  consecutiveFailures Int                 @default(0)
+  // Auto-disabled (not `active`) when consecutiveFailures crosses the
+  // threshold in the scheduler — keeps raw_listings flowing to REVIEW
+  // manually rather than trusting a possibly-broken parser to auto-publish.
+  autoPublishEnabled  Boolean             @default(true)
+  healthStatus        SourceHealthStatus?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  rawListings  RawListing[]
+  places       Place[]
+  events       Event[]
+  eventSources EventSource[]
+  parserRuns   ParserRun[]
 
   @@map("sources")
+}
+
+enum ParserRunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+// One row per scheduler tick per source — the run-history the single mutable
+// Source.healthStatus/lastRunAt couldn't provide (no way to see "last 10
+// runs" or compute consecutive failures from those alone).
+model ParserRun {
+  id              String          @id @default(cuid())
+  sourceId        String
+  startedAt       DateTime        @default(now())
+  finishedAt      DateTime?
+  durationMs      Int?
+  status          ParserRunStatus @default(RUNNING)
+  discoveredCount Int             @default(0)
+  newCount        Int             @default(0)
+  updatedCount    Int             @default(0)
+  rejectedCount   Int             @default(0)
+  errorCount      Int             @default(0)
+  errorSummary    Json?
+
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+  @@map("parser_runs")
 }
 
 enum RawListingStatus {
@@ -79,18 +136,19 @@ enum RawListingStatus {
 }
 
 model RawListing {
-  id               String            @id @default(cuid())
+  id               String           @id @default(cuid())
   sourceId         String
   sourceExternalId String
   rawPayload       Json
   contentHash      String
-  fetchedAt        DateTime          @default(now())
-  status           RawListingStatus  @default(PENDING)
+  fetchedAt        DateTime         @default(now())
+  status           RawListingStatus @default(PENDING)
   errorMessage     String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source      Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  eventSource EventSource?
 
   @@unique([sourceId, sourceExternalId])
   @@index([status])
@@ -122,13 +180,13 @@ enum PriceTier {
 // ---------------------------------------------------------------------------
 
 model District {
-  id        String   @id @default(cuid())
-  slug      String   @unique
+  id        String                                  @id @default(cuid())
+  slug      String                                  @unique
   boundary  Unsupported("geography(Polygon,4326)")?
   centerLat Float?
   centerLng Float?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime                                @default(now())
+  updatedAt DateTime                                @updatedAt
 
   translations DistrictTranslation[]
   places       Place[]
@@ -138,7 +196,7 @@ model District {
 }
 
 model DistrictTranslation {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   districtId  String
   locale      String
   name        String
@@ -169,7 +227,7 @@ model Category {
 }
 
 model CategoryTranslation {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   categoryId  String
   locale      String
   name        String
@@ -210,26 +268,26 @@ model TagTranslation {
 // ---------------------------------------------------------------------------
 
 model Place {
-  id                 String        @id @default(cuid())
-  sourceId           String?
-  categoryId         String
-  districtId         String?
-  coordinates        Unsupported("geography(Point,4326)")?
-  priceTier          PriceTier?
-  hours              Json?
-  contact            Json?
-  status             ContentStatus @default(DRAFT)
-  confidenceScore    Float?
-  canonicalDedupeId  String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  publishedAt        DateTime?
+  id                String                                @id @default(cuid())
+  sourceId          String?
+  categoryId        String
+  districtId        String?
+  coordinates       Unsupported("geography(Point,4326)")?
+  priceTier         PriceTier?
+  hours             Json?
+  contact           Json?
+  status            ContentStatus                         @default(DRAFT)
+  confidenceScore   Float?
+  canonicalDedupeId String?
+  createdAt         DateTime                              @default(now())
+  updatedAt         DateTime                              @updatedAt
+  publishedAt       DateTime?
 
-  source          Source?  @relation(fields: [sourceId], references: [id])
-  category        Category @relation(fields: [categoryId], references: [id])
+  source          Source?   @relation(fields: [sourceId], references: [id])
+  category        Category  @relation(fields: [categoryId], references: [id])
   district        District? @relation(fields: [districtId], references: [id])
-  canonicalDedupe Place?   @relation("PlaceDedupe", fields: [canonicalDedupeId], references: [id])
-  duplicates      Place[]  @relation("PlaceDedupe")
+  canonicalDedupe Place?    @relation("PlaceDedupe", fields: [canonicalDedupeId], references: [id])
+  duplicates      Place[]   @relation("PlaceDedupe")
 
   translations PlaceTranslation[]
   tags         PlaceTag[]
@@ -244,20 +302,20 @@ model Place {
 }
 
 model PlaceTranslation {
-  id               String  @id @default(cuid())
-  placeId          String
-  locale           String
-  name             String
-  description      String
-  slug             String
-  metaTitle        String?
-  metaDescription  String?
-  canonicalUrl     String?
-  keywords         String[]
-  ogTitle          String?
-  ogDescription    String?
-  ogImage          String?
-  schemaJsonLd     Json?
+  id              String   @id @default(cuid())
+  placeId         String
+  locale          String
+  name            String
+  description     String
+  slug            String
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+  keywords        String[]
+  ogTitle         String?
+  ogDescription   String?
+  ogImage         String?
+  schemaJsonLd    Json?
 
   place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
 
@@ -281,33 +339,52 @@ model PlaceTag {
 // Event (time-bound: concerts, festivals, exhibitions, weekend happenings)
 // ---------------------------------------------------------------------------
 
+// Factual state of the event itself, independent of moderation (`status`).
+// An event can be PUBLISHED and SOLD_OUT at the same time, for example.
+enum EventState {
+  SCHEDULED
+  POSTPONED
+  CANCELLED
+  SOLD_OUT
+}
+
 model Event {
-  id                  String        @id @default(cuid())
-  sourceId            String?
+  id                     String                                @id @default(cuid())
+  // "Primary" source — the highest-priority EventSource row for this event,
+  // kept in sync with the eventSources relation below. Multiple sources can
+  // report the same event; this pair is what public pages render/link to.
+  sourceId               String?
   // The specific source article/listing URL this event was collected from
   // (distinct from `source`, which is the site as a whole) — shown as an
   // outbound "more info / tickets" link, and doubles as attribution back
   // to the source per the sourcing strategy in the architecture doc.
-  sourceUrl           String?
+  sourceUrl              String?
   // The actual ticket-seller URL (Passo, Biletinial, Bugece, etc.), found
   // within the source article rather than in the RSS excerpt itself —
   // distinct from sourceUrl (the article) since they're often different
   // sites. Preferred over sourceUrl for the "Get Tickets" link when set.
-  ticketUrl           String?
-  placeId             String?
-  standaloneLocation  Json?
-  coordinates         Unsupported("geography(Point,4326)")?
-  categoryId          String
-  districtId          String?
-  startAt             DateTime
-  endAt               DateTime?
-  recurrence          Json?
-  price               Json?
-  status              ContentStatus @default(DRAFT)
-  confidenceScore     Float?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  publishedAt         DateTime?
+  ticketUrl              String?
+  organizerName          String?
+  placeId                String?
+  standaloneLocation     Json?
+  coordinates            Unsupported("geography(Point,4326)")?
+  categoryId             String
+  districtId             String?
+  startAt                DateTime
+  endAt                  DateTime?
+  recurrence             Json?
+  price                  Json?
+  eventState             EventState                            @default(SCHEDULED)
+  // Set when a previously-seen event disappears from a source's listing.
+  // The event is NOT deleted or immediately unpublished — it's flagged so
+  // the next run(s) can try to reconfirm it against other sources before
+  // any status change.
+  missingFromSourceSince DateTime?
+  status                 ContentStatus                         @default(DRAFT)
+  confidenceScore        Float?
+  createdAt              DateTime                              @default(now())
+  updatedAt              DateTime                              @updatedAt
+  publishedAt            DateTime?
 
   source   Source?   @relation(fields: [sourceId], references: [id])
   place    Place?    @relation(fields: [placeId], references: [id])
@@ -318,6 +395,7 @@ model Event {
   tags         EventTag[]
   media        Media[]
   articleItems ArticleItem[]
+  eventSources EventSource[]
 
   @@index([status])
   @@index([startAt])
@@ -326,21 +404,52 @@ model Event {
   @@map("events")
 }
 
+// Ledger of every source that has reported a given canonical Event —
+// "create one canonical event and preserve all source references" rather
+// than deleting duplicates. `priority` follows the source-conflict order
+// from the architecture doc: 0 = official organizer/venue, 1 = official
+// ticket seller, 2 = aggregator, 3 = editorial/community. The lowest-
+// priority-number row is mirrored onto Event.sourceId/sourceUrl.
+model EventSource {
+  id                String   @id @default(cuid())
+  eventId           String
+  sourceId          String
+  rawListingId      String?  @unique
+  sourceExternalId  String
+  sourceUrl         String
+  priority          Int      @default(2)
+  isPrimary         Boolean  @default(false)
+  // Fields where this source's value disagreed with the canonical event at
+  // merge time (e.g. { "startAt": "2026-08-01T19:00:00Z" }) — surfaced in
+  // the admin review/conflicts screen rather than silently overwritten.
+  conflictingFields Json?
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  source     Source      @relation(fields: [sourceId], references: [id])
+  rawListing RawListing? @relation(fields: [rawListingId], references: [id])
+
+  @@unique([sourceId, sourceExternalId])
+  @@index([eventId])
+  @@map("event_sources")
+}
+
 model EventTranslation {
-  id               String  @id @default(cuid())
-  eventId          String
-  locale           String
-  name             String
-  description      String
-  slug             String
-  metaTitle        String?
-  metaDescription  String?
-  canonicalUrl     String?
-  keywords         String[]
-  ogTitle          String?
-  ogDescription    String?
-  ogImage          String?
-  schemaJsonLd     Json?
+  id              String   @id @default(cuid())
+  eventId         String
+  locale          String
+  name            String
+  description     String
+  slug            String
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+  keywords        String[]
+  ogTitle         String?
+  ogDescription   String?
+  ogImage         String?
+  schemaJsonLd    Json?
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
@@ -388,18 +497,18 @@ model Article {
 }
 
 model ArticleTranslation {
-  id               String  @id @default(cuid())
-  articleId        String
-  locale           String
-  title            String
-  body             String
-  metaTitle        String?
-  metaDescription  String?
-  slug             String
-  ogTitle          String?
-  ogDescription    String?
-  ogImage          String?
-  schemaJsonLd     Json?
+  id              String  @id @default(cuid())
+  articleId       String
+  locale          String
+  title           String
+  body            String
+  metaTitle       String?
+  metaDescription String?
+  slug            String
+  ogTitle         String?
+  ogDescription   String?
+  ogImage         String?
+  schemaJsonLd    Json?
 
   article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
@@ -434,15 +543,19 @@ enum MediaOwnerType {
 }
 
 model Media {
-  id                 String         @id @default(cuid())
-  ownerType          MediaOwnerType
-  placeId            String?
-  eventId            String?
-  url                String
-  altText            Json?
-  sourceAttribution  String?
-  licenseStatus      String?
-  createdAt          DateTime       @default(now())
+  id                String         @id @default(cuid())
+  ownerType         MediaOwnerType
+  placeId           String?
+  eventId           String?
+  url               String
+  altText           Json?
+  sourceAttribution String?
+  licenseStatus     String?
+  // Set true when a scraped image's usage rights aren't confirmed (the
+  // default for anything pulled from a new source) — surfaced as an admin
+  // flag rather than blocking publish outright, per the images policy.
+  rightsUncertain   Boolean        @default(false)
+  createdAt         DateTime       @default(now())
 
   place Place? @relation(fields: [placeId], references: [id], onDelete: Cascade)
   event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -499,12 +612,12 @@ model ReviewQueueItem {
 }
 
 model Embedding {
-  id         String @id @default(cuid())
+  id         String                      @id @default(cuid())
   entityType String
   entityId   String
   embedding  Unsupported("vector(1536)")
   model      String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime                    @default(now())
 
   @@unique([entityType, entityId, model])
   @@map("embeddings")

@@ -1,5 +1,6 @@
 export * from "./taxonomy.js";
 export * from "./pipeline.js";
+export * from "./event-source-merge.js";
 export * from "./agents/cleaner.js";
 export * from "./agents/category.js";
 export * from "./agents/dedupe.js";

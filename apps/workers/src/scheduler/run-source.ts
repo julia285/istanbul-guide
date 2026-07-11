@@ -2,15 +2,19 @@ import { prisma, type Source, type Prisma } from "@istanbul-guide/db";
 import { hashNormalizedRecord } from "@istanbul-guide/shared/content-hash";
 import { buildAdapter } from "../adapters/registry.js";
 
-export async function runSource(source: Source): Promise<{
+export interface RunSourceResult {
   sourceSlug: string;
-  fetched: number;
-  changed: number;
-}> {
+  discovered: number;
+  created: number;
+  updated: number;
+}
+
+export async function runSource(source: Source): Promise<RunSourceResult> {
   const adapter = buildAdapter(source);
   const records = await adapter.collect();
 
-  let changed = 0;
+  let created = 0;
+  let updated = 0;
   for (const record of records) {
     const contentHash = hashNormalizedRecord(record);
     const existing = await prisma.rawListing.findUnique({
@@ -47,13 +51,13 @@ export async function runSource(source: Source): Promise<{
         fetchedAt: new Date(),
       },
     });
-    changed++;
+
+    if (existing) {
+      updated++;
+    } else {
+      created++;
+    }
   }
 
-  await prisma.source.update({
-    where: { id: source.id },
-    data: { lastRunAt: new Date(), healthStatus: "ok" },
-  });
-
-  return { sourceSlug: source.slug, fetched: records.length, changed };
+  return { sourceSlug: source.slug, discovered: records.length, created, updated };
 }
