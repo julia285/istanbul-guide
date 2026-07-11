@@ -2,7 +2,8 @@
   "nav": {
     "home": "Home",
     "events": "Events",
-    "restaurants": "Restaurants"
+    "restaurants": "Restaurants",
+    "collections": "Best Of"
   },
   "home": {
     "title": "Istanbul Guide",
@@ -26,7 +27,22 @@
     "title": "Restaurants",
     "subtitle": "Where to eat, from neighborhood favorites to hidden gems",
     "empty": "Nothing published yet",
-    "emptyDetail": "We're actively collecting restaurants right now — check back shortly."
+    "emptyDetail": "We're actively collecting restaurants right now — check back shortly.",
+    "allCuisines": "All",
+    "back": "Restaurants",
+    "address": "Address",
+    "cuisine": "Cuisine",
+    "priceModerate": "$$",
+    "priceExpensive": "$$$",
+    "visitWebsite": "Visit Website",
+    "readSource": "Read the source",
+    "sourceNote": "You'll be taken to the original source."
+  },
+  "collections": {
+    "title": "Best Of Istanbul",
+    "subtitle": "Curated restaurant collections by cuisine",
+    "empty": "No collections published yet",
+    "viewAll": "View all"
   },
   "sections": {
     "nightlife": "Nightlife",

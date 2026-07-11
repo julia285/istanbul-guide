@@ -2,7 +2,8 @@
   "nav": {
     "home": "Ana Sayfa",
     "events": "Etkinlikler",
-    "restaurants": "Restoranlar"
+    "restaurants": "Restoranlar",
+    "collections": "En İyiler"
   },
   "home": {
     "title": "İstanbul Rehberi",
@@ -26,7 +27,22 @@
     "title": "Restoranlar",
     "subtitle": "Mahalle favorilerinden gizli mekanlara, nerede yenir",
     "empty": "Henüz yayınlanan yok",
-    "emptyDetail": "Şu anda restoranları topluyoruz — kısa süre sonra tekrar bakın."
+    "emptyDetail": "Şu anda restoranları topluyoruz — kısa süre sonra tekrar bakın.",
+    "allCuisines": "Tümü",
+    "back": "Restoranlar",
+    "address": "Adres",
+    "cuisine": "Mutfak",
+    "priceModerate": "$$",
+    "priceExpensive": "$$$",
+    "visitWebsite": "Web Sitesini Ziyaret Et",
+    "readSource": "Kaynağı oku",
+    "sourceNote": "Orijinal kaynağa yönlendirileceksiniz."
+  },
+  "collections": {
+    "title": "İstanbul'un En İyileri",
+    "subtitle": "Mutfağa göre seçilmiş restoran koleksiyonları",
+    "empty": "Henüz yayınlanan koleksiyon yok",
+    "viewAll": "Tümünü gör"
   },
   "sections": {
     "nightlife": "Gece Hayatı",

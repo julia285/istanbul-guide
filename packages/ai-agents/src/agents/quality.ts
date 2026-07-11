@@ -12,8 +12,10 @@ export interface QualityResult {
 // Deliberately rule-based rather than another LLM call: the inputs are
 // already-validated structured data at this point, so a transparent,
 // debuggable formula is more trustworthy than asking a model to "grade
-// itself" — and it's free. Thresholds match architecture doc section 4.
-const PUBLISH_THRESHOLD = 0.85;
+// itself" — and it's free. Publish threshold raised to 0.90 per the
+// multi-source moderation policy (auto-publish only above that bar, now
+// that more sources means more chances for a bad match to slip through).
+const PUBLISH_THRESHOLD = 0.9;
 const REVIEW_THRESHOLD = 0.5;
 
 export function scoreQuality(

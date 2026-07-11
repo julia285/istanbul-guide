@@ -270,6 +270,13 @@ model TagTranslation {
 model Place {
   id                String                                @id @default(cuid())
   sourceId          String?
+  // Reference/attribution link (e.g. the Michelin Guide page or an
+  // official history writeup) — mirrors Event.sourceUrl. Not necessarily
+  // the venue's own site; that goes in `contact.website` when known.
+  sourceUrl         String?
+  // Free-text street address — unlike events (which only need a district
+  // for filtering), a restaurant is useless to a visitor without one.
+  addressText       String?
   categoryId        String
   districtId        String?
   coordinates       Unsupported("geography(Point,4326)")?

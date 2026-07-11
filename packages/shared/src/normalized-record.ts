@@ -19,6 +19,12 @@ export const normalizedRecordSchema = z.object({
   startAt: z.string().datetime().optional(),
   endAt: z.string().datetime().optional(),
   priceHint: z.string().optional(),
+  // Exact structured facts, when the source provides them directly (e.g.
+  // JSON-LD `offers.url` / `performer.name`) — passed straight through to
+  // the Event record rather than through the Cleaner LLM, since these are
+  // precise identifiers/names, not free text that benefits from extraction.
+  ticketUrl: z.string().url().optional(),
+  organizerName: z.string().optional(),
   contact: z
     .object({
       phone: z.string().optional(),

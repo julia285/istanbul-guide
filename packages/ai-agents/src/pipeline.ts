@@ -73,6 +73,7 @@ export async function processRawListing(
         rawListingId: rawListing.id,
         sourceExternalId: rawListing.sourceExternalId,
         sourceUrl: record.sourceUrl,
+        ticketUrl: record.ticketUrl,
       },
       facts,
     );
@@ -111,6 +112,8 @@ export async function processRawListing(
     data: {
       sourceId: rawListing.sourceId,
       sourceUrl: record.sourceUrl,
+      ticketUrl: record.ticketUrl,
+      organizerName: record.organizerName,
       categoryId: category.id,
       districtId: district?.id,
       startAt: new Date(facts.startAt),

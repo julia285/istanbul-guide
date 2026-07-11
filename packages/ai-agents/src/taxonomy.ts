@@ -14,6 +14,7 @@ export const CATEGORIES = [
   { slug: "family-activities", en: "Family Activities", tr: "Aile Etkinlikleri" },
   { slug: "markets", en: "Markets", tr: "Pazarlar" },
   { slug: "workshops", en: "Workshops", tr: "Atölyeler" },
+  { slug: "restaurants", en: "Restaurants", tr: "Restoranlar" },
 ] as const;
 
 export const DISTRICTS = [
@@ -40,6 +41,19 @@ export const TAGS = [
   { slug: "weekend", en: "Weekend", tr: "Hafta Sonu" },
   { slug: "tourist-friendly", en: "Tourist-Friendly", tr: "Turistlere Uygun" },
   { slug: "expat-friendly", en: "Expat-Friendly", tr: "Yabancılara Uygun" },
+  { slug: "fine-dining", en: "Fine Dining", tr: "Fine Dining" },
+  { slug: "authentic", en: "Authentic & Time-Proven", tr: "Otantik ve Köklü" },
+  { slug: "new-opening", en: "New Opening", tr: "Yeni Açılan" },
+  { slug: "michelin-starred", en: "Michelin-Starred", tr: "Michelin Yıldızlı" },
+  // Cuisine types — deliberately modeled as tags, not a separate taxonomy
+  // dimension, so a restaurant can carry more than one (e.g. a Nikkei
+  // restaurant is both japanese-cuisine and international-fusion) and so
+  // cuisine collections ("Best Italian") are just a tag filter, same
+  // pattern as every other section — see architecture doc section 1.
+  { slug: "turkish-cuisine", en: "Turkish Cuisine", tr: "Türk Mutfağı" },
+  { slug: "italian-cuisine", en: "Italian Cuisine", tr: "İtalyan Mutfağı" },
+  { slug: "japanese-cuisine", en: "Japanese Cuisine", tr: "Japon Mutfağı" },
+  { slug: "seafood", en: "Seafood", tr: "Deniz Ürünleri" },
 ] as const;
 
 export const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
