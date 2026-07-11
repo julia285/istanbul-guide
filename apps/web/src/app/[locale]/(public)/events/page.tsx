@@ -11,27 +11,69 @@ export const dynamic = "force-dynamic";
 
 export default async function EventsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ category?: string }>;
 }) {
   const { locale } = await params;
+  const { category: selectedCategory } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("events");
 
-  const events = await prisma.event.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { startAt: "asc" },
-    take: 24,
-    include: {
-      translations: { where: { locale } },
-      district: { include: { translations: { where: { locale } } } },
-    },
-  });
+  const [events, categories] = await Promise.all([
+    prisma.event.findMany({
+      where: {
+        status: "PUBLISHED",
+        ...(selectedCategory ? { category: { slug: selectedCategory } } : {}),
+      },
+      orderBy: { startAt: "asc" },
+      take: 24,
+      include: {
+        translations: { where: { locale } },
+        district: { include: { translations: { where: { locale } } } },
+      },
+    }),
+    prisma.category.findMany({
+      include: { translations: { where: { locale } } },
+      orderBy: { slug: "asc" },
+    }),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-14">
       <h1 className="font-display text-3xl font-semibold text-(--color-teal-900)">{t("title")}</h1>
       <p className="mt-2 text-(--color-ink)/60">{t("subtitle")}</p>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/events"
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+            !selectedCategory
+              ? "bg-(--color-teal-900) text-white"
+              : "bg-white text-(--color-ink)/60 hover:bg-(--color-teal-50)"
+          }`}
+        >
+          {t("allCategories")}
+        </Link>
+        {categories.map((category) => {
+          const label = category.translations[0]?.name ?? category.slug;
+          const isActive = selectedCategory === category.slug;
+          return (
+            <Link
+              key={category.id}
+              href={`/events?category=${category.slug}`}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                isActive
+                  ? "bg-(--color-teal-900) text-white"
+                  : "bg-white text-(--color-ink)/60 hover:bg-(--color-teal-50)"
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </div>
 
       {events.length === 0 ? (
         <EmptyState title={t("empty")} detail={t("emptyDetail")} />

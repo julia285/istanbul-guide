@@ -119,18 +119,41 @@ export default async function EventDetailPage({
         {translation.description}
       </p>
 
-      {event.sourceUrl && !isExpired && (
-        <a
-          href={event.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-(--color-terracotta-500) px-6 py-3 text-sm font-semibold text-white transition hover:bg-(--color-terracotta-600)"
-        >
-          {locale === "tr" ? "Bilet ve Detaylar" : "Get Tickets & Details"}
-          <span aria-hidden>↗</span>
-        </a>
-      )}
-      {event.sourceUrl && (
+      {(() => {
+        const primaryUrl = event.ticketUrl ?? event.sourceUrl;
+        if (!primaryUrl || isExpired) return null;
+        const showArticleLink = event.ticketUrl && event.sourceUrl && event.sourceUrl !== event.ticketUrl;
+        return (
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <a
+              href={primaryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-(--color-terracotta-500) px-6 py-3 text-sm font-semibold text-white transition hover:bg-(--color-terracotta-600)"
+            >
+              {event.ticketUrl
+                ? locale === "tr"
+                  ? "Bilet Al"
+                  : "Get Tickets"
+                : locale === "tr"
+                  ? "Detayları Gör"
+                  : "See Details"}
+              <span aria-hidden>↗</span>
+            </a>
+            {showArticleLink && (
+              <a
+                href={event.sourceUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-(--color-teal-700) hover:underline"
+              >
+                {locale === "tr" ? "Haberi oku" : "Read the article"}
+              </a>
+            )}
+          </div>
+        );
+      })()}
+      {(event.ticketUrl ?? event.sourceUrl) && (
         <p className="mt-2 text-xs text-(--color-ink)/40">
           {locale === "tr"
             ? "Orijinal kaynağa yönlendirileceksiniz."

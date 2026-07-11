@@ -289,6 +289,11 @@ model Event {
   // outbound "more info / tickets" link, and doubles as attribution back
   // to the source per the sourcing strategy in the architecture doc.
   sourceUrl           String?
+  // The actual ticket-seller URL (Passo, Biletinial, Bugece, etc.), found
+  // within the source article rather than in the RSS excerpt itself —
+  // distinct from sourceUrl (the article) since they're often different
+  // sites. Preferred over sourceUrl for the "Get Tickets" link when set.
+  ticketUrl           String?
   placeId             String?
   standaloneLocation  Json?
   coordinates         Unsupported("geography(Point,4326)")?

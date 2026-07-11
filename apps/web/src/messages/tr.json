@@ -19,7 +19,8 @@
     "title": "Etkinlikler",
     "subtitle": "Konserler, festivaller ve şehirde olup bitenler",
     "empty": "Henüz yayınlanan yok",
-    "emptyDetail": "Şu anda etkinlikleri topluyoruz — kısa süre sonra tekrar bakın."
+    "emptyDetail": "Şu anda etkinlikleri topluyoruz — kısa süre sonra tekrar bakın.",
+    "allCategories": "Tümü"
   },
   "restaurants": {
     "title": "Restoranlar",

@@ -19,7 +19,8 @@
     "title": "Events",
     "subtitle": "Concerts, festivals, and things happening around the city",
     "empty": "Nothing published yet",
-    "emptyDetail": "We're actively collecting events right now — check back shortly."
+    "emptyDetail": "We're actively collecting events right now — check back shortly.",
+    "allCategories": "All"
   },
   "restaurants": {
     "title": "Restaurants",
