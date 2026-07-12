@@ -55,6 +55,8 @@
     "published": "Live listings",
     "reviewQueue": "Needs your review",
     "rejected": "Not published",
+    "restaurants": "Restaurants",
+    "collections": "Collections",
     "sources": "Data sources",
     "parserStatus": "Collection status",
     "aiLogs": "Activity log",
