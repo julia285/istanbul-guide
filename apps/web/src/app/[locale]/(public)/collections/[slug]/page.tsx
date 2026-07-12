@@ -63,12 +63,12 @@ export default async function CollectionDetailPage({
   if (!translation) notFound();
 
   const { article } = translation;
-  const t = await getTranslations("collections");
+  const t = await getTranslations("restaurants");
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-14">
-      <Link href="/collections" className="text-sm font-medium text-(--color-teal-700) hover:underline">
-        ← {t("title")}
+      <Link href="/restaurants" className="text-sm font-medium text-(--color-teal-700) hover:underline">
+        ← {t("back")}
       </Link>
 
       <h1 className="font-display mt-4 text-3xl font-semibold text-(--color-teal-900) sm:text-4xl">

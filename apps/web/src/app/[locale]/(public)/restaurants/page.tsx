@@ -20,8 +20,9 @@ export default async function RestaurantsPage({
   const { cuisine: selectedCuisine } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("restaurants");
+  const tc = await getTranslations("collections");
 
-  const [restaurants, cuisineTags] = await Promise.all([
+  const [restaurants, cuisineTags, collections] = await Promise.all([
     prisma.place.findMany({
       where: {
         status: "PUBLISHED",
@@ -41,6 +42,14 @@ export default async function RestaurantsPage({
       include: { translations: { where: { locale } } },
       orderBy: { slug: "asc" },
     }),
+    prisma.article.findMany({
+      where: { status: "PUBLISHED", type: "LISTICLE" },
+      orderBy: { publishedAt: "desc" },
+      include: {
+        translations: { where: { locale } },
+        items: { select: { id: true } },
+      },
+    }),
   ]);
 
   return (
@@ -48,7 +57,35 @@ export default async function RestaurantsPage({
       <h1 className="font-display text-3xl font-semibold text-(--color-teal-900)">{t("title")}</h1>
       <p className="mt-2 text-(--color-ink)/60">{t("subtitle")}</p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      {collections.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-display text-lg font-semibold text-(--color-teal-900)">{tc("title")}</h2>
+          <p className="mt-1 text-sm text-(--color-ink)/60">{tc("subtitle")}</p>
+          <ul className="mt-4 flex gap-4 overflow-x-auto pb-2">
+            {collections.map((article) => {
+              const translation = article.translations[0];
+              if (!translation) return null;
+              return (
+                <li key={article.id} className="w-64 shrink-0">
+                  <Link
+                    href={`/collections/${translation.slug}`}
+                    className="block rounded-2xl border border-black/5 bg-white p-4 shadow-sm transition hover:shadow-md"
+                  >
+                    <h3 className="font-display text-base font-semibold text-(--color-teal-900)">
+                      {translation.title}
+                    </h3>
+                    <p className="mt-2 text-xs font-medium uppercase tracking-wide text-(--color-terracotta-500)">
+                      {article.items.length} {tc("viewAll")}
+                    </p>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-8 flex flex-wrap gap-2">
         <Link
           href="/restaurants"
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${

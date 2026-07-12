@@ -69,12 +69,6 @@ export default async function LocaleLayout({
                 >
                   {t("restaurants")}
                 </Link>
-                <Link
-                  href="/collections"
-                  className="text-sm font-medium text-(--color-ink)/70 transition hover:text-(--color-teal-900)"
-                >
-                  {t("collections")}
-                </Link>
                 <LanguageSwitcher />
               </div>
             </nav>

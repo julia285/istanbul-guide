@@ -2,8 +2,7 @@
   "nav": {
     "home": "Ana Sayfa",
     "events": "Etkinlikler",
-    "restaurants": "Restoranlar",
-    "collections": "En İyiler"
+    "restaurants": "Restoranlar"
   },
   "home": {
     "title": "İstanbul Rehberi",
@@ -41,7 +40,6 @@
   "collections": {
     "title": "İstanbul'un En İyileri",
     "subtitle": "Mutfağa göre seçilmiş restoran koleksiyonları",
-    "empty": "Henüz yayınlanan koleksiyon yok",
     "viewAll": "Tümünü gör"
   },
   "sections": {

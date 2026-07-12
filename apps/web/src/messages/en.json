@@ -2,8 +2,7 @@
   "nav": {
     "home": "Home",
     "events": "Events",
-    "restaurants": "Restaurants",
-    "collections": "Best Of"
+    "restaurants": "Restaurants"
   },
   "home": {
     "title": "Istanbul Guide",
@@ -41,7 +40,6 @@
   "collections": {
     "title": "Best Of Istanbul",
     "subtitle": "Curated restaurant collections by cuisine",
-    "empty": "No collections published yet",
     "viewAll": "View all"
   },
   "sections": {
