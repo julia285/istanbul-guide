@@ -1,0 +1,15 @@
+<!--
+Synthetic fixture (not fetched from the live site): simulates a page where
+BUGECE's markup changed and the schema.org JSON-LD payload is no longer
+present in the RSC hydration script — e.g. a redesign, an error page served
+with a 200, or a non-event page picked up by mistake. Used to verify the
+adapter fails closed (returns null / skips the record) instead of throwing
+or fabricating an event.
+-->
+<!doctype html>
+<html>
+  <head><title>Some Page - BUGECE</title></head>
+  <body>
+    <script>self.__next_f.push([1,"just some unrelated hydration payload, no schema.org data here"])</script>
+  </body>
+</html>

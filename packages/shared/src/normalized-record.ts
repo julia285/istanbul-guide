@@ -16,8 +16,12 @@ export const normalizedRecordSchema = z.object({
   coordinates: z
     .object({ lat: z.number(), lng: z.number() })
     .optional(),
-  startAt: z.string().datetime().optional(),
-  endAt: z.string().datetime().optional(),
+  // { offset: true } accepts timezone-offset timestamps (e.g. "+03:00"),
+  // not just UTC "Z" — schema.org JSON-LD sources report local Istanbul
+  // offsets directly, which is exactly the data we want, not something to
+  // reject and force through a lossy UTC conversion.
+  startAt: z.string().datetime({ offset: true }).optional(),
+  endAt: z.string().datetime({ offset: true }).optional(),
   priceHint: z.string().optional(),
   // Exact structured facts, when the source provides them directly (e.g.
   // JSON-LD `offers.url` / `performer.name`) — passed straight through to

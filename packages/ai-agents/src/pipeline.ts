@@ -13,6 +13,15 @@ export type PipelineOutcome =
   | { status: "PUBLISHED" | "REVIEW" | "REJECTED"; eventId: string }
   | { status: "DUPLICATE"; existingEventId: string };
 
+export interface ProcessRawListingOptions {
+  // When false, a listing that would otherwise score high enough to
+  // auto-publish is sent to REVIEW instead — this is how a source that's
+  // been auto-disabled after repeated failures (Source.autoPublishEnabled)
+  // stays "flowing to review" rather than either silently publishing
+  // possibly-bad data or blocking ingestion entirely. Defaults to true.
+  allowAutoPublish?: boolean;
+}
+
 async function logStep(
   entityId: string,
   agentName: string,
@@ -34,7 +43,9 @@ async function logStep(
 export async function processRawListing(
   rawListing: RawListing,
   siteBaseUrl: string,
+  options: ProcessRawListingOptions = {},
 ): Promise<PipelineOutcome> {
+  const allowAutoPublish = options.allowAutoPublish ?? true;
   const record = normalizedRecordSchema.parse(rawListing.rawPayload);
 
   const facts = await cleanRecord(record);
@@ -103,6 +114,13 @@ export async function processRawListing(
   const quality = scoreQuality(facts, categorization, record.images.length > 0);
   await logStep(rawListing.id, "quality", "ok", { confidenceScore: quality.score });
 
+  // A source with auto-publish disabled (repeated failures — see
+  // Source.autoPublishEnabled) never gets a straight-to-PUBLISHED outcome,
+  // no matter how it scores — everything routes to REVIEW until a human
+  // confirms the source is trustworthy again.
+  const decision =
+    !allowAutoPublish && quality.decision === "PUBLISHED" ? "REVIEW" : quality.decision;
+
   const tags = categorization.tagSlugs.length
     ? await prisma.tag.findMany({ where: { slug: { in: categorization.tagSlugs } } })
     : [];
@@ -121,9 +139,9 @@ export async function processRawListing(
       price: facts.isFree
         ? { isFree: true }
         : { isFree: false, amount: facts.priceAmount, currency: facts.priceCurrency },
-      status: quality.decision,
+      status: decision,
       confidenceScore: quality.score,
-      publishedAt: quality.decision === "PUBLISHED" ? now : undefined,
+      publishedAt: decision === "PUBLISHED" ? now : undefined,
       tags: { create: tags.map((tag) => ({ tagId: tag.id })) },
       translations: {
         create: [
@@ -166,12 +184,15 @@ export async function processRawListing(
     sourceUrl: record.sourceUrl,
   });
 
-  if (quality.decision === "REVIEW") {
+  if (decision === "REVIEW") {
+    const downgraded = decision !== quality.decision;
     await prisma.reviewQueueItem.create({
       data: {
         entityType: "event",
         entityId: event.id,
-        reason: quality.reasons.join("; ") || "below auto-publish confidence threshold",
+        reason: downgraded
+          ? "source auto-publish disabled after repeated failures"
+          : quality.reasons.join("; ") || "below auto-publish confidence threshold",
         confidenceScore: quality.score,
       },
     });
@@ -182,5 +203,5 @@ export async function processRawListing(
     data: { status: "PROCESSED" },
   });
 
-  return { status: quality.decision, eventId: event.id };
+  return { status: decision, eventId: event.id };
 }

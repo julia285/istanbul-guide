@@ -22,7 +22,7 @@ async function tick(): Promise<void> {
     try {
       const result = await runSource(source);
       console.log(
-        `[parser] ${result.sourceSlug}: discovered ${result.discovered}, created ${result.created}, updated ${result.updated}`,
+        `[parser] ${result.sourceSlug}: discovered ${result.discovered}, created ${result.created}, updated ${result.updated}, rejected ${result.rejected}, processing errors ${result.processingErrors}`,
       );
 
       await Promise.all([
@@ -35,6 +35,8 @@ async function tick(): Promise<void> {
             discoveredCount: result.discovered,
             newCount: result.created,
             updatedCount: result.updated,
+            rejectedCount: result.rejected,
+            errorCount: result.processingErrors,
           },
         }),
         prisma.source.update({

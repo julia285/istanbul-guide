@@ -22,7 +22,10 @@ function trigrams(input: string): Set<string> {
   return grams;
 }
 
-function diceSimilarity(a: string, b: string): number {
+// Exported so it can be unit-tested directly (e.g. verifying a new
+// source's event names don't collide with existing ones) without needing
+// a live database connection the way findDuplicateEvent does.
+export function diceSimilarity(a: string, b: string): number {
   const setA = trigrams(a);
   const setB = trigrams(b);
   if (setA.size === 0 || setB.size === 0) return 0;
