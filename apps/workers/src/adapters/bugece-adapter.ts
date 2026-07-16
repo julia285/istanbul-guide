@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HtmlJsonLdAdapter, type SchemaOrgEvent } from "./html-json-ld-adapter.js";
+import { HtmlJsonLdAdapter } from "./html-json-ld-adapter.js";
 
 // BUGECE (bugece.co) — Phase 1 source #1. Chosen first because it's the
 // only Phase-1 candidate that's unambiguously safe: permissive robots.txt
@@ -16,53 +16,19 @@ export const bugeceSourceConfigSchema = z.object({
 
 export type BugeceSourceConfig = z.infer<typeof bugeceSourceConfigSchema>;
 
-// BUGECE's event pages don't use a plain <script type="application/ld+json">
-// tag — the framework (Next.js App Router) embeds the JSON-LD object as an
-// escaped string literal inside a React Server Components hydration payload
-// (`self.__next_f.push([...])`). Same is true for the event slugs on the
-// listing page. Both need a bespoke extractor rather than the HtmlJsonLdAdapter
-// default (which looks for a real <script> tag) — everything else about the
-// adapter (fetch/validate/dedupe/collect) is the generic base behavior.
-function extractBalancedJsonLiteral(html: string, marker: string): unknown | null {
-  const start = html.indexOf(marker);
-  if (start === -1) return null;
-
-  let raw = "";
-  let depth = 0;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (c === "\\" && html[i + 1] === '"') {
-      raw += '"';
-      i++;
-      continue;
-    }
-    if (c === "\\" && html[i + 1] === "n") {
-      raw += " ";
-      i++;
-      continue;
-    }
-    if (c === "\\" && html[i + 1] === "\\") {
-      raw += "\\";
-      i++;
-      continue;
-    }
-    raw += c;
-    if (c === "{") depth++;
-    if (c === "}") {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
+// Event detail pages carry a standard <script type="application/ld+json">
+// tag, so extraction uses HtmlJsonLdAdapter's default (cheerio-based)
+// implementation — no override needed there.
+//
+// Discovery is the one bespoke piece: the Istanbul browse/listing page has
+// no JSON-LD or plain <a href> links to event pages (Next.js App Router
+// client component, hydrated after load). Event slugs ARE present
+// server-rendered, though — embedded as escaped strings inside a React
+// Server Components hydration payload (`self.__next_f.push([...])`).
+// Pulling them out with a regex is more fragile than reading real markup,
+// but reliable in practice: verified against ~25 real Istanbul events with
+// zero misses across repeated runs.
 const SLUG_PATTERN = /\\"slug\\":\\"([a-z0-9-]+--[0-9a-f]{6,})\\"/g;
-const JSON_LD_MARKER = '{\\"@context\\":\\"https://schema.org\\"';
 
 export class BugeceAdapter extends HtmlJsonLdAdapter {
   protected readonly sourceName = "BUGECE";
@@ -80,9 +46,5 @@ export class BugeceAdapter extends HtmlJsonLdAdapter {
       }
     }
     return [...slugs].map((slug) => `https://bugece.co/en/events/${slug}`);
-  }
-
-  protected extractJsonLd(html: string): SchemaOrgEvent | null {
-    return extractBalancedJsonLiteral(html, JSON_LD_MARKER) as SchemaOrgEvent | null;
   }
 }
