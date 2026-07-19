@@ -78,7 +78,11 @@ model Source {
   // How often the scheduler should consider this source due, per-source
   // (major ticket platforms 120-240, official venues 240-360, museums 720,
   // community sources 360-720) — see architecture doc scheduling section.
-  intervalMinutes     Int                 @default(60)
+  // Default is twice a day (720) rather than hourly — conservative on both
+  // request volume against the source and Claude API spend, since every
+  // new/changed listing costs a real AI-pipeline run. Override per-source
+  // for anything that actually needs tighter freshness.
+  intervalMinutes     Int                 @default(720)
   lastRunAt           DateTime?
   lastSuccessAt       DateTime?
   lastFailureAt       DateTime?

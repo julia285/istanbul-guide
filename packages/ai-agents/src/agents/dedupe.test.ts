@@ -23,6 +23,9 @@ const EXISTING_YABANGEE_EVENT_NAMES = [
 // Real event names pulled from the BUGECE fixtures (apps/workers/src/adapters/__fixtures__/bugece/).
 const BUGECE_FIXTURE_EVENT_NAMES = ["Soundscape Festival Istanbul 2026", "Jeton presents Sara Landry"];
 
+// Real event names pulled from the Bubilet fixtures (apps/workers/src/adapters/__fixtures__/bubilet/).
+const BUBILET_FIXTURE_EVENT_NAMES = ["Pink Martini", "Karsu"];
+
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.6;
 
 describe("diceSimilarity", () => {
@@ -63,5 +66,36 @@ describe("diceSimilarity", () => {
         );
       }
     }
+  });
+
+  it("does not false-positive Bubilet fixture events against existing Yabangee/BUGECE events", () => {
+    for (const bubiletName of BUBILET_FIXTURE_EVENT_NAMES) {
+      for (const otherName of [...EXISTING_YABANGEE_EVENT_NAMES, ...BUGECE_FIXTURE_EVENT_NAMES]) {
+        const similarity = diceSimilarity(bubiletName, otherName);
+        expect(similarity, `"${bubiletName}" vs "${otherName}"`).toBeLessThan(DUPLICATE_SIMILARITY_THRESHOLD);
+      }
+    }
+  });
+
+  // KNOWN LIMITATION, not a false positive: packages/ai-agents/scripts/backfill-ticket-urls.ts
+  // records that the existing Yabangee event "Kovacs at IF Performance Hall
+  // Beşiktaş" and Bubilet's own listing for the same show
+  // (bubilet.com.tr/istanbul/etkinlik/-100-muzik-sunar-kovacs-istanbul,
+  // titled "Kovacs | İstanbul") are the SAME real-world event — confirmed by
+  // the site owner reading both pages by hand. Name-only trigram similarity
+  // scores this pair well BELOW the 0.6 duplicate threshold, because past
+  // the shared word "Kovacs" the two titles share almost nothing
+  // (venue name vs. just "İstanbul"). findDuplicateEvent() has no other
+  // signal to fall back on — it doesn't compare ticketUrl or source
+  // identifiers at all, despite the architecture plan calling for exactly
+  // that as an additional dedup signal. Net effect: adding Bubilet as a
+  // live source would very likely create a second, separate Event row for
+  // this show rather than recognizing the overlap. Fixing this means
+  // extending findDuplicateEvent with a ticketUrl/organizer/source-identifier
+  // check, not something in this adapter's scope — flagging here with a
+  // real, reproducible example rather than leaving it undiscovered.
+  it("documents a real true-positive duplicate that name-similarity alone misses", () => {
+    const similarity = diceSimilarity("Kovacs | İstanbul", "Kovacs at IF Performance Hall Beşiktaş");
+    expect(similarity).toBeLessThan(DUPLICATE_SIMILARITY_THRESHOLD);
   });
 });

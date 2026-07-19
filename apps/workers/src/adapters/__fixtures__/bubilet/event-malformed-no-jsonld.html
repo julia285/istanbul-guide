@@ -1,0 +1,16 @@
+<!--
+Synthetic fixture (not fetched from the live site): simulates a page where
+Bubilet's markup changed and none of the <script type="application/ld+json">
+tags carry an Event/MusicEvent type — e.g. a redesign, a removed/expired
+event page still returning 200, or a non-event page picked up by mistake.
+Used to verify the adapter fails closed (returns null / skips the record)
+instead of throwing or fabricating an event.
+-->
+<!doctype html>
+<html>
+  <head>
+    <title>Some Page - Bubilet</title>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Bubilet"}</script>
+  </head>
+  <body></body>
+</html>

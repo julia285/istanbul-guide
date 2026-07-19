@@ -2,6 +2,7 @@ import type { Source } from "@istanbul-guide/db";
 import type { SourceAdapter } from "./types.js";
 import { RssAdapter, rssSourceConfigSchema } from "./rss-adapter.js";
 import { BugeceAdapter, bugeceSourceConfigSchema } from "./bugece-adapter.js";
+import { BubiletAdapter, bubiletSourceConfigSchema } from "./bubilet-adapter.js";
 
 // SCRAPE sources are bespoke per-site (unlike RSS/API, which share one
 // generic adapter class keyed by config) — keyed by Source.slug so adding
@@ -9,6 +10,7 @@ import { BugeceAdapter, bugeceSourceConfigSchema } from "./bugece-adapter.js";
 // no changes needed to the scheduler or AI pipeline.
 const SCRAPE_ADAPTERS: Record<string, (scrapeConfig: unknown) => SourceAdapter> = {
   bugece: (scrapeConfig) => new BugeceAdapter(bugeceSourceConfigSchema.parse(scrapeConfig ?? {})),
+  bubilet: (scrapeConfig) => new BubiletAdapter(bubiletSourceConfigSchema.parse(scrapeConfig ?? {})),
 };
 
 export function buildAdapter(source: Source): SourceAdapter {
