@@ -71,6 +71,7 @@ export async function processRawListing(
     category.id,
     district?.id ?? null,
     facts.startAt,
+    { sourceUrl: record.sourceUrl, ticketUrl: record.ticketUrl },
   );
   if (duplicate) {
     await logStep(rawListing.id, "dedupe", "ok", { confidenceScore: duplicate.similarity });

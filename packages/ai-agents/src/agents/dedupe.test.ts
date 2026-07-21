@@ -77,24 +77,21 @@ describe("diceSimilarity", () => {
     }
   });
 
-  // KNOWN LIMITATION, not a false positive: packages/ai-agents/scripts/backfill-ticket-urls.ts
-  // records that the existing Yabangee event "Kovacs at IF Performance Hall
-  // Beşiktaş" and Bubilet's own listing for the same show
-  // (bubilet.com.tr/istanbul/etkinlik/-100-muzik-sunar-kovacs-istanbul,
-  // titled "Kovacs | İstanbul") are the SAME real-world event — confirmed by
-  // the site owner reading both pages by hand. Name-only trigram similarity
-  // scores this pair well BELOW the 0.6 duplicate threshold, because past
-  // the shared word "Kovacs" the two titles share almost nothing
-  // (venue name vs. just "İstanbul"). findDuplicateEvent() has no other
-  // signal to fall back on — it doesn't compare ticketUrl or source
-  // identifiers at all, despite the architecture plan calling for exactly
-  // that as an additional dedup signal. Net effect: adding Bubilet as a
-  // live source would very likely create a second, separate Event row for
-  // this show rather than recognizing the overlap. Fixing this means
-  // extending findDuplicateEvent with a ticketUrl/organizer/source-identifier
-  // check, not something in this adapter's scope — flagging here with a
-  // real, reproducible example rather than leaving it undiscovered.
-  it("documents a real true-positive duplicate that name-similarity alone misses", () => {
+  // FIXED at a different layer: name-only trigram similarity between the
+  // existing Yabangee event "Kovacs at IF Performance Hall Beşiktaş" and
+  // Bubilet's own listing for the same show ("Kovacs | İstanbul") scores
+  // well below the 0.6 threshold — confirmed here — because past the
+  // shared word "Kovacs" the two titles share almost nothing. This is
+  // exactly why findDuplicateEvent() now checks sourceUrl/ticketUrl for an
+  // exact match *before* falling back to name similarity: the Yabangee
+  // event's ticketUrl was backfilled to Bubilet's page for this show
+  // (packages/ai-agents/scripts/backfill-ticket-urls.ts), so when Bubilet
+  // is scraped, its sourceUrl for that exact page matches — see
+  // findDuplicateByIdentifier in dedupe.ts. That DB-querying path can't be
+  // unit tested in this environment (no reachable Postgres here), but the
+  // name-similarity half of the story — why a fallback was needed at all —
+  // is verified below.
+  it("shows why name-similarity alone would have missed the Kovacs/Bubilet duplicate", () => {
     const similarity = diceSimilarity("Kovacs | İstanbul", "Kovacs at IF Performance Hall Beşiktaş");
     expect(similarity).toBeLessThan(DUPLICATE_SIMILARITY_THRESHOLD);
   });

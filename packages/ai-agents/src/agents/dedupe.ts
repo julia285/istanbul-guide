@@ -41,13 +41,53 @@ export interface DuplicateMatch {
   similarity: number;
 }
 
+// A second source's page URL for the exact same real-world event and the
+// first source's article/ticket link for it are never the same string, so
+// URL identifiers only catch a duplicate when one source's ticketUrl
+// happens to equal another's sourceUrl/ticketUrl — which does happen in
+// practice (see the Kovacs/Bubilet case below) whenever a listing was
+// itself backfilled with, or independently discovered, the same ticket
+// page. It's a precise but narrow signal, layered in front of the fuzzy
+// name check rather than replacing it.
+export interface EventIdentifiers {
+  sourceUrl?: string;
+  ticketUrl?: string;
+}
+
+// Real case this exists to catch: Yabangee's article for "Kovacs at IF
+// Performance Hall Beşiktaş" and Bubilet's own listing page for the same
+// show ("Kovacs | İstanbul") score ~0.2 name similarity — nowhere near the
+// 0.6 threshold, because past the shared word "Kovacs" the titles share
+// almost nothing. But the Yabangee event's ticketUrl was backfilled to
+// point at that exact Bubilet page, so when Bubilet is scraped, its
+// sourceUrl for that page exactly matches the existing event's ticketUrl —
+// an unambiguous signal a name-similarity check alone can't see.
+async function findDuplicateByIdentifier(identifiers: EventIdentifiers): Promise<DuplicateMatch | null> {
+  const urls = [identifiers.sourceUrl, identifiers.ticketUrl].filter(
+    (url): url is string => Boolean(url),
+  );
+  if (urls.length === 0) return null;
+
+  const match = await prisma.event.findFirst({
+    where: {
+      status: { in: ["PUBLISHED", "REVIEW"] },
+      OR: [{ sourceUrl: { in: urls } }, { ticketUrl: { in: urls } }],
+    },
+  });
+  return match ? { eventId: match.id, similarity: 1 } : null;
+}
+
 export async function findDuplicateEvent(
   name: string,
   venueName: string | undefined,
   categoryId: string,
   districtId: string | null,
   startAt: string,
+  identifiers: EventIdentifiers = {},
 ): Promise<DuplicateMatch | null> {
+  const identifierMatch = await findDuplicateByIdentifier(identifiers);
+  if (identifierMatch) return identifierMatch;
+
   const start = new Date(startAt);
   const windowMs = DATE_WINDOW_HOURS * 60 * 60 * 1000;
 
