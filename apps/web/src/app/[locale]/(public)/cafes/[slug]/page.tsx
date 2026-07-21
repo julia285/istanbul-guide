@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/empty-state";
 export const dynamic = "force-dynamic";
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://istanbul-guide-delta.vercel.app";
-const CUISINE_TAG_SLUGS = ["turkish-cuisine", "italian-cuisine", "japanese-cuisine", "seafood"];
 
 async function getPlace(locale: string, slug: string) {
   const translation = await prisma.placeTranslation.findUnique({
@@ -25,14 +24,13 @@ async function getPlace(locale: string, slug: string) {
   });
 
   if (!translation) return null;
-  if (translation.place.status !== "PUBLISHED") return null;
+  if (translation.place.status !== "PUBLISHED" || translation.place.category.slug !== "cafes") return null;
   return translation;
 }
 
-// Programmatic SEO: a slug that isn't an individual restaurant might be a
-// district or cuisine tag — /restaurants/kadikoy and
-// /restaurants/italian-cuisine are real, crawlable archive pages generated
-// from taxonomy that already exists, not new content.
+// Programmatic SEO: a slug that isn't an individual cafe might be a
+// district — /cafes/kadikoy is a real, crawlable archive page generated
+// from taxonomy that already exists, same pattern as events/restaurants.
 async function getDistrictArchive(locale: string, slug: string) {
   const district = await prisma.district.findUnique({
     where: { slug },
@@ -41,7 +39,7 @@ async function getDistrictArchive(locale: string, slug: string) {
   if (!district) return null;
 
   const places = await prisma.place.findMany({
-    where: { status: "PUBLISHED", category: { slug: "restaurants" }, districtId: district.id },
+    where: { status: "PUBLISHED", category: { slug: "cafes" }, districtId: district.id },
     orderBy: { publishedAt: "desc" },
     take: 48,
     include: {
@@ -49,35 +47,7 @@ async function getDistrictArchive(locale: string, slug: string) {
       district: { include: { translations: { where: { locale } } } },
     },
   });
-  return { kind: "district" as const, taxonomy: district, places };
-}
-
-async function getCuisineArchive(locale: string, slug: string) {
-  if (!CUISINE_TAG_SLUGS.includes(slug)) return null;
-  const tag = await prisma.tag.findUnique({
-    where: { slug },
-    include: { translations: { where: { locale } } },
-  });
-  if (!tag) return null;
-
-  const places = await prisma.place.findMany({
-    where: {
-      status: "PUBLISHED",
-      category: { slug: "restaurants" },
-      tags: { some: { tag: { slug } } },
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 48,
-    include: {
-      translations: { where: { locale } },
-      district: { include: { translations: { where: { locale } } } },
-    },
-  });
-  return { kind: "cuisine" as const, taxonomy: tag, places };
-}
-
-async function getArchive(locale: string, slug: string) {
-  return (await getDistrictArchive(locale, slug)) ?? (await getCuisineArchive(locale, slug));
+  return { taxonomy: district, places };
 }
 
 export async function generateMetadata({
@@ -100,52 +70,21 @@ export async function generateMetadata({
     };
   }
 
-  const archive = await getArchive(locale, slug);
+  const archive = await getDistrictArchive(locale, slug);
   if (!archive) return {};
   const name = archive.taxonomy.translations[0]?.name ?? slug;
-  const title =
-    archive.kind === "district"
-      ? locale === "tr"
-        ? `${name}'de Restoranlar`
-        : `Restaurants in ${name}, Istanbul`
-      : locale === "tr"
-        ? `İstanbul'da ${name}`
-        : `Best ${name} in Istanbul`;
-  return {
-    title,
-    alternates: { canonical: `${SITE_BASE_URL}/${locale}/restaurants/${slug}` },
-  };
+  const title = locale === "tr" ? `${name}'de Kafeler` : `Cafes in ${name}, Istanbul`;
+  return { title, alternates: { canonical: `${SITE_BASE_URL}/${locale}/cafes/${slug}` } };
 }
 
-function priceTierLabel(tier: string | null, t: (key: string) => string): string | null {
-  if (tier === "MODERATE") return t("priceModerate");
-  if (tier === "EXPENSIVE") return t("priceExpensive");
-  return null;
-}
+const PRICE_RANGE_SYMBOLS: Record<string, string> = { BUDGET: "$", MODERATE: "$$", EXPENSIVE: "$$$" };
 
-const PRICE_RANGE_SYMBOLS: Record<string, string> = {
-  BUDGET: "$",
-  MODERATE: "$$",
-  EXPENSIVE: "$$$",
-};
-
-// No SEO agent runs for restaurants (manually curated / admin-entered, not
-// pipeline-generated), so translation.schemaJsonLd is never populated —
-// build the Schema.org Restaurant object deterministically from fields we
-// already have, rather than leaving restaurant pages with no structured
-// data at all.
-function buildRestaurantJsonLd(
-  translation: NonNullable<Awaited<ReturnType<typeof getPlace>>>,
-): Record<string, unknown> {
+function buildCafeJsonLd(translation: NonNullable<Awaited<ReturnType<typeof getPlace>>>): Record<string, unknown> {
   const { place } = translation;
-  const cuisineNames = place.tags
-    .filter(({ tag }) => CUISINE_TAG_SLUGS.includes(tag.slug))
-    .map(({ tag }) => tag.translations[0]?.name ?? tag.slug);
   const contact = place.contact as { website?: string } | null;
-
   return {
     "@context": "https://schema.org",
-    "@type": "Restaurant",
+    "@type": "CafeOrCoffeeShop",
     name: translation.name,
     description: translation.description,
     url: translation.canonicalUrl ?? undefined,
@@ -160,7 +99,6 @@ function buildRestaurantJsonLd(
           },
         }
       : {}),
-    ...(cuisineNames.length > 0 ? { servesCuisine: cuisineNames } : {}),
     ...(place.priceTier && PRICE_RANGE_SYMBOLS[place.priceTier]
       ? { priceRange: PRICE_RANGE_SYMBOLS[place.priceTier] }
       : {}),
@@ -174,30 +112,20 @@ function ArchivePage({
 }: {
   locale: string;
   slug: string;
-  archive: NonNullable<Awaited<ReturnType<typeof getArchive>>>;
+  archive: NonNullable<Awaited<ReturnType<typeof getDistrictArchive>>>;
 }) {
   const name = archive.taxonomy.translations[0]?.name ?? slug;
-  const title =
-    archive.kind === "district"
-      ? locale === "tr"
-        ? `${name}'de Restoranlar`
-        : `Restaurants in ${name}`
-      : locale === "tr"
-        ? `İstanbul'da ${name}`
-        : `Best ${name} in Istanbul`;
+  const title = locale === "tr" ? `${name}'de Kafeler` : `Cafes in ${name}`;
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-14">
-      <Link href="/restaurants" className="text-sm font-medium text-(--color-teal-700) hover:underline">
-        ← {locale === "tr" ? "Restoranlar" : "Restaurants"}
+      <Link href="/cafes" className="text-sm font-medium text-(--color-teal-700) hover:underline">
+        ← {locale === "tr" ? "Kafeler" : "Cafes"}
       </Link>
       <h1 className="font-display mt-4 text-3xl font-semibold text-(--color-teal-900)">{title}</h1>
 
       {archive.places.length === 0 ? (
-        <EmptyState
-          title={locale === "tr" ? "Henüz yayınlanan yok" : "Nothing published yet"}
-          detail=""
-        />
+        <EmptyState title={locale === "tr" ? "Henüz yayınlanan yok" : "Nothing published yet"} detail="" />
       ) : (
         <ul className="mt-8 grid gap-5 sm:grid-cols-2">
           {archive.places.map((place) => {
@@ -215,11 +143,6 @@ function ArchivePage({
                 {place.addressText && (
                   <p className="mt-3 text-sm text-(--color-ink)/50">{place.addressText}</p>
                 )}
-                {place.district?.translations[0] && (
-                  <p className="mt-1 text-xs font-medium uppercase tracking-wide text-(--color-terracotta-500)">
-                    {place.district.translations[0].name}
-                  </p>
-                )}
               </>
             );
             return (
@@ -227,7 +150,7 @@ function ArchivePage({
                 key={place.id}
                 className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md"
               >
-                {translation?.slug ? <Link href={`/restaurants/${translation.slug}`}>{card}</Link> : card}
+                {translation?.slug ? <Link href={`/cafes/${translation.slug}`}>{card}</Link> : card}
               </li>
             );
           })}
@@ -237,7 +160,7 @@ function ArchivePage({
   );
 }
 
-export default async function RestaurantDetailPage({
+export default async function CafeDetailPage({
   params,
 }: {
   params: Promise<{ locale: string; slug: string }>;
@@ -247,25 +170,22 @@ export default async function RestaurantDetailPage({
   const translation = await getPlace(locale, slug);
 
   if (!translation) {
-    const archive = await getArchive(locale, slug);
+    const archive = await getDistrictArchive(locale, slug);
     if (archive) return <ArchivePage locale={locale} slug={slug} archive={archive} />;
     notFound();
   }
 
   const { place } = translation;
-  const t = await getTranslations("restaurants");
-  const cuisineTags = place.tags.filter(({ tag }) => CUISINE_TAG_SLUGS.includes(tag.slug));
-  const otherTags = place.tags.filter(({ tag }) => !CUISINE_TAG_SLUGS.includes(tag.slug));
+  const t = await getTranslations("cafes");
+  const otherTags = place.tags;
   const contact = place.contact as { website?: string } | null;
-  const priceLabel = priceTierLabel(place.priceTier, t);
-
-  const jsonLd = translation.schemaJsonLd ?? buildRestaurantJsonLd(translation);
+  const jsonLd = translation.schemaJsonLd ?? buildCafeJsonLd(translation);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-14">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <Link href="/restaurants" className="text-sm font-medium text-(--color-teal-700) hover:underline">
+      <Link href="/cafes" className="text-sm font-medium text-(--color-teal-700) hover:underline">
         ← {t("back")}
       </Link>
 
@@ -274,11 +194,7 @@ export default async function RestaurantDetailPage({
       </h1>
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium uppercase tracking-wide text-(--color-terracotta-500)">
-        {cuisineTags.map(({ tag }) => (
-          <span key={tag.id}>{tag.translations[0]?.name ?? tag.slug}</span>
-        ))}
-        {place.district?.translations[0] && <span>· {place.district.translations[0].name}</span>}
-        {priceLabel && <span>· {priceLabel}</span>}
+        {place.district?.translations[0] && <span>{place.district.translations[0].name}</span>}
       </div>
 
       <p className="mt-6 whitespace-pre-line text-base leading-relaxed text-(--color-ink)/80">
@@ -287,9 +203,7 @@ export default async function RestaurantDetailPage({
 
       {place.addressText && (
         <div className="mt-8">
-          <p className="text-xs font-medium uppercase tracking-wide text-(--color-ink)/40">
-            {t("address")}
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-(--color-ink)/40">{t("address")}</p>
           <p className="mt-1 text-sm text-(--color-ink)/70">{place.addressText}</p>
         </div>
       )}
@@ -334,10 +248,6 @@ export default async function RestaurantDetailPage({
             </span>
           ))}
         </div>
-      )}
-
-      {place.category.translations[0] && (
-        <p className="mt-8 text-sm text-(--color-ink)/50">{place.category.translations[0].name}</p>
       )}
     </div>
   );

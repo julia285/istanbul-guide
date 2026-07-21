@@ -62,7 +62,7 @@ export default async function EventsPage({
           return (
             <Link
               key={category.id}
-              href={`/events?category=${category.slug}`}
+              href={`/events/${category.slug}`}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 isActive
                   ? "bg-(--color-teal-900) text-white"

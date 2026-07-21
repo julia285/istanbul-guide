@@ -17,6 +17,7 @@ export default async function AdminLayout({
     ["/admin/review-queue", t("reviewQueue")],
     ["/admin/rejected", t("rejected")],
     ["/admin/restaurants", t("restaurants")],
+    ["/admin/cafes", t("cafes")],
     ["/admin/collections", t("collections")],
     ["/admin/sources", t("sources")],
     ["/admin/parser-status", t("parserStatus")],

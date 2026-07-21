@@ -2,7 +2,8 @@
   "nav": {
     "home": "Ana Sayfa",
     "events": "Etkinlikler",
-    "restaurants": "Restoranlar"
+    "restaurants": "Restoranlar",
+    "cafes": "Kafeler"
   },
   "home": {
     "title": "İstanbul Rehberi",
@@ -12,6 +13,7 @@
     "heroSubtitle": "Konserler, festivaller, restoranlar ve gizli mekanlar — otomatik olarak toplanır ve güncel tutulur, hiçbir şeyi kaçırmazsınız.",
     "exploreEvents": "Etkinlikleri keşfet",
     "exploreRestaurants": "Restoranları keşfet",
+    "exploreCafes": "Kafeleri keşfet",
     "sectionsTitle": "Şehrin her yönü için",
     "comingSoon": "Yakında"
   },
@@ -42,10 +44,20 @@
     "subtitle": "Mutfağa göre seçilmiş restoran koleksiyonları",
     "viewAll": "Tümünü gör"
   },
+  "cafes": {
+    "title": "Kafeler",
+    "subtitle": "İstanbul'da gerçek bir fincan kahve nerede içilir",
+    "empty": "Henüz yayınlanan yok",
+    "emptyDetail": "Şu anda kafeleri topluyoruz — kısa süre sonra tekrar bakın.",
+    "back": "Kafeler",
+    "address": "Adres",
+    "visitWebsite": "Web Sitesini Ziyaret Et",
+    "readSource": "Kaynağı oku",
+    "sourceNote": "Orijinal kaynağa yönlendirileceksiniz."
+  },
   "sections": {
     "nightlife": "Gece Hayatı",
     "museums": "Müzeler",
-    "cafes": "Kafeler",
     "dayTrips": "Günübirlik Geziler",
     "neighborhoodGuides": "Semt Rehberleri",
     "hiddenGems": "Gizli Mekanlar"
@@ -56,6 +68,7 @@
     "reviewQueue": "İncelemenizi bekleyenler",
     "rejected": "Yayınlanmayanlar",
     "restaurants": "Restoranlar",
+    "cafes": "Kafeler",
     "collections": "Koleksiyonlar",
     "sources": "Veri kaynakları",
     "parserStatus": "Toplama durumu",

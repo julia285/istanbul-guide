@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { prisma } from "@istanbul-guide/db";
 import { Link } from "@/i18n/navigation";
+import { EmptyState } from "@/components/empty-state";
 
 export const dynamic = "force-dynamic";
+
+const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://istanbul-guide-delta.vercel.app";
 
 async function getEvent(locale: string, slug: string) {
   const translation = await prisma.eventTranslation.findUnique({
@@ -29,6 +32,55 @@ async function getEvent(locale: string, slug: string) {
   return translation;
 }
 
+// Programmatic SEO: a slug that isn't an individual event might be a
+// category or district — /events/concerts and /events/kadikoy are real,
+// crawlable archive pages generated from taxonomy that already exists,
+// not new content. Tried in this order after the event lookup misses.
+async function getCategoryArchive(locale: string, slug: string) {
+  // Category is shared with Place ("restaurants"/"cafes" are categories
+  // too) — require at least one event so those slugs fall through to the
+  // district check instead of resolving as permanently-empty archives.
+  const category = await prisma.category.findFirst({
+    where: { slug, events: { some: {} } },
+    include: { translations: { where: { locale } } },
+  });
+  if (!category) return null;
+
+  const events = await prisma.event.findMany({
+    where: { status: "PUBLISHED", categoryId: category.id },
+    orderBy: { startAt: "asc" },
+    take: 48,
+    include: {
+      translations: { where: { locale } },
+      district: { include: { translations: { where: { locale } } } },
+    },
+  });
+  return { kind: "category" as const, taxonomy: category, events };
+}
+
+async function getDistrictArchive(locale: string, slug: string) {
+  const district = await prisma.district.findUnique({
+    where: { slug },
+    include: { translations: { where: { locale } } },
+  });
+  if (!district) return null;
+
+  const events = await prisma.event.findMany({
+    where: { status: "PUBLISHED", districtId: district.id },
+    orderBy: { startAt: "asc" },
+    take: 48,
+    include: {
+      translations: { where: { locale } },
+      district: { include: { translations: { where: { locale } } } },
+    },
+  });
+  return { kind: "district" as const, taxonomy: district, events };
+}
+
+async function getArchive(locale: string, slug: string) {
+  return (await getCategoryArchive(locale, slug)) ?? (await getDistrictArchive(locale, slug));
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -36,18 +88,34 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const translation = await getEvent(locale, slug);
-  if (!translation) return {};
+  if (translation) {
+    return {
+      title: translation.metaTitle ?? translation.name,
+      description: translation.metaDescription ?? undefined,
+      keywords: translation.keywords,
+      alternates: translation.canonicalUrl ? { canonical: translation.canonicalUrl } : undefined,
+      openGraph: {
+        title: translation.ogTitle ?? translation.metaTitle ?? translation.name,
+        description: translation.ogDescription ?? translation.metaDescription ?? undefined,
+      },
+      robots: translation.event.status === "EXPIRED" ? { index: false, follow: true } : undefined,
+    };
+  }
 
+  const archive = await getArchive(locale, slug);
+  if (!archive) return {};
+  const name = archive.taxonomy.translations[0]?.name ?? slug;
+  const title =
+    archive.kind === "category"
+      ? locale === "tr"
+        ? `${name} Etkinlikleri`
+        : `${name} in Istanbul`
+      : locale === "tr"
+        ? `${name}'de Etkinlikler`
+        : `Events in ${name}, Istanbul`;
   return {
-    title: translation.metaTitle ?? translation.name,
-    description: translation.metaDescription ?? undefined,
-    keywords: translation.keywords,
-    alternates: translation.canonicalUrl ? { canonical: translation.canonicalUrl } : undefined,
-    openGraph: {
-      title: translation.ogTitle ?? translation.metaTitle ?? translation.name,
-      description: translation.ogDescription ?? translation.metaDescription ?? undefined,
-    },
-    robots: translation.event.status === "EXPIRED" ? { index: false, follow: true } : undefined,
+    title,
+    alternates: { canonical: `${SITE_BASE_URL}/${locale}/events/${slug}` },
   };
 }
 
@@ -63,6 +131,76 @@ function formatPrice(price: unknown, locale: string): string | null {
   return null;
 }
 
+function ArchivePage({
+  locale,
+  slug,
+  archive,
+}: {
+  locale: string;
+  slug: string;
+  archive: NonNullable<Awaited<ReturnType<typeof getArchive>>>;
+}) {
+  const name = archive.taxonomy.translations[0]?.name ?? slug;
+  const title =
+    archive.kind === "category"
+      ? locale === "tr"
+        ? `${name} Etkinlikleri`
+        : `${name} in Istanbul`
+      : locale === "tr"
+        ? `${name}'de Etkinlikler`
+        : `Events in ${name}`;
+
+  return (
+    <div className="mx-auto max-w-5xl px-5 py-14">
+      <Link href="/events" className="text-sm font-medium text-(--color-teal-700) hover:underline">
+        ← {locale === "tr" ? "Etkinlikler" : "Events"}
+      </Link>
+      <h1 className="font-display mt-4 text-3xl font-semibold text-(--color-teal-900)">{title}</h1>
+
+      {archive.events.length === 0 ? (
+        <EmptyState
+          title={locale === "tr" ? "Henüz yayınlanan yok" : "Nothing published yet"}
+          detail=""
+        />
+      ) : (
+        <ul className="mt-8 grid gap-5 sm:grid-cols-2">
+          {archive.events.map((event) => {
+            const translation = event.translations[0];
+            const card = (
+              <>
+                <h2 className="font-display text-lg font-semibold text-(--color-teal-900)">
+                  {translation?.name ?? event.id}
+                </h2>
+                {translation?.description && (
+                  <p className="mt-1.5 line-clamp-2 text-sm text-(--color-ink)/60">
+                    {translation.description}
+                  </p>
+                )}
+                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-(--color-terracotta-500)">
+                  {new Date(event.startAt).toLocaleDateString(locale, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {event.district?.translations[0] ? ` · ${event.district.translations[0].name}` : ""}
+                </p>
+              </>
+            );
+            return (
+              <li
+                key={event.id}
+                className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md"
+              >
+                {translation?.slug ? <Link href={`/events/${translation.slug}`}>{card}</Link> : card}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -71,7 +209,12 @@ export default async function EventDetailPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
   const translation = await getEvent(locale, slug);
-  if (!translation) notFound();
+
+  if (!translation) {
+    const archive = await getArchive(locale, slug);
+    if (archive) return <ArchivePage locale={locale} slug={slug} archive={archive} />;
+    notFound();
+  }
 
   const { event } = translation;
   const t = await getTranslations("events");

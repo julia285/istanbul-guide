@@ -22,7 +22,7 @@ export default async function RestaurantsPage({
   const t = await getTranslations("restaurants");
   const tc = await getTranslations("collections");
 
-  const [restaurants, cuisineTags, collections] = await Promise.all([
+  const [restaurants, cuisineTags, collections, districts] = await Promise.all([
     prisma.place.findMany({
       where: {
         status: "PUBLISHED",
@@ -49,6 +49,11 @@ export default async function RestaurantsPage({
         translations: { where: { locale } },
         items: { select: { id: true } },
       },
+    }),
+    prisma.district.findMany({
+      where: { places: { some: { status: "PUBLISHED", category: { slug: "restaurants" } } } },
+      include: { translations: { where: { locale } } },
+      orderBy: { slug: "asc" },
     }),
   ]);
 
@@ -102,7 +107,7 @@ export default async function RestaurantsPage({
           return (
             <Link
               key={tag.id}
-              href={`/restaurants?cuisine=${tag.slug}`}
+              href={`/restaurants/${tag.slug}`}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 isActive
                   ? "bg-(--color-teal-900) text-white"
@@ -114,6 +119,20 @@ export default async function RestaurantsPage({
           );
         })}
       </div>
+
+      {districts.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {districts.map((district) => (
+            <Link
+              key={district.id}
+              href={`/restaurants/${district.slug}`}
+              className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-(--color-ink)/60 transition hover:bg-(--color-teal-50)"
+            >
+              {district.translations[0]?.name ?? district.slug}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {restaurants.length === 0 ? (
         <EmptyState title={t("empty")} detail={t("emptyDetail")} />

@@ -15,6 +15,7 @@ export const CATEGORIES = [
   { slug: "markets", en: "Markets", tr: "Pazarlar" },
   { slug: "workshops", en: "Workshops", tr: "Atölyeler" },
   { slug: "restaurants", en: "Restaurants", tr: "Restoranlar" },
+  { slug: "cafes", en: "Cafes", tr: "Kafeler" },
 ] as const;
 
 export const DISTRICTS = [
@@ -54,6 +55,10 @@ export const TAGS = [
   { slug: "italian-cuisine", en: "Italian Cuisine", tr: "İtalyan Mutfağı" },
   { slug: "japanese-cuisine", en: "Japanese Cuisine", tr: "Japon Mutfağı" },
   { slug: "seafood", en: "Seafood", tr: "Deniz Ürünleri" },
+  // Cafe-specific descriptors — a coffee roastery and a workspace-friendly
+  // cafe are different search intents even within the same category.
+  { slug: "specialty-coffee", en: "Specialty Coffee", tr: "Özel Kahve" },
+  { slug: "roastery", en: "Roastery", tr: "Kavurma Evi" },
 ] as const;
 
 export const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);

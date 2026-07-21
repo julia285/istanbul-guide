@@ -2,7 +2,8 @@
   "nav": {
     "home": "Home",
     "events": "Events",
-    "restaurants": "Restaurants"
+    "restaurants": "Restaurants",
+    "cafes": "Cafes"
   },
   "home": {
     "title": "Istanbul Guide",
@@ -12,6 +13,7 @@
     "heroSubtitle": "Concerts, festivals, restaurants, and hidden gems — collected automatically and kept fresh, so you never miss what's on.",
     "exploreEvents": "Explore events",
     "exploreRestaurants": "Explore restaurants",
+    "exploreCafes": "Explore cafes",
     "sectionsTitle": "Built for every side of the city",
     "comingSoon": "Coming soon"
   },
@@ -42,10 +44,20 @@
     "subtitle": "Curated restaurant collections by cuisine",
     "viewAll": "View all"
   },
+  "cafes": {
+    "title": "Cafes",
+    "subtitle": "Where to get a real cup of coffee in Istanbul",
+    "empty": "Nothing published yet",
+    "emptyDetail": "We're actively collecting cafes right now — check back shortly.",
+    "back": "Cafes",
+    "address": "Address",
+    "visitWebsite": "Visit Website",
+    "readSource": "Read the source",
+    "sourceNote": "You'll be taken to the original source."
+  },
   "sections": {
     "nightlife": "Nightlife",
     "museums": "Museums",
-    "cafes": "Cafes",
     "dayTrips": "Day Trips",
     "neighborhoodGuides": "Neighborhood Guides",
     "hiddenGems": "Hidden Gems"
@@ -56,6 +68,7 @@
     "reviewQueue": "Needs your review",
     "rejected": "Not published",
     "restaurants": "Restaurants",
+    "cafes": "Cafes",
     "collections": "Collections",
     "sources": "Data sources",
     "parserStatus": "Collection status",

@@ -14,7 +14,6 @@ export default async function HomePage({
   const comingSoon = [
     s("nightlife"),
     s("museums"),
-    s("cafes"),
     s("hiddenGems"),
     s("neighborhoodGuides"),
     s("dayTrips"),
@@ -52,6 +51,12 @@ export default async function HomePage({
               className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               {t("exploreRestaurants")}
+            </Link>
+            <Link
+              href="/cafes"
+              className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              {t("exploreCafes")}
             </Link>
           </div>
         </div>
